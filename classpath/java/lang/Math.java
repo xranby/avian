@@ -68,20 +68,28 @@ public final class Math {
   }
 
   public static long round(double v) {
-    return (long) Math.floor(v + 0.5);
+    return Math.floor(v + 0.5);
   }
 
   public static int round(float v) {
-    return (int) Math.floor(v + 0.5);
+    return Math.floor(v + 0.5f);
   }
 
   public static double random() {
     return random.nextDouble();
   }
 
-  public static native double floor(double v);
+  public static native long floor(double v);
 
-  public static native double ceil(double v);
+  public static int floor(float v) {
+    return (int)floor((double)v);
+  }
+
+  public static native long ceil(double v);
+
+  public static int ceil(float v) {
+    return (int)ceil((double)v);
+  }
 
   public static native double exp(double v);
 

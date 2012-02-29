@@ -756,16 +756,16 @@ Java_java_lang_Math_pow(JNIEnv*, jclass, jdouble val, jdouble exp)
   return pow(val, exp);
 }
 
-extern "C" JNIEXPORT jdouble JNICALL
+extern "C" JNIEXPORT jlong JNICALL
 Java_java_lang_Math_floor(JNIEnv*, jclass, jdouble val)
 {
-  return floor(val);
+  return (jlong)floor(val);
 }
 
-extern "C" JNIEXPORT jdouble JNICALL
+extern "C" JNIEXPORT jlong JNICALL
 Java_java_lang_Math_ceil(JNIEnv*, jclass, jdouble val)
 {
-  return ceil(val);
+  return (jlong)ceil(val);
 }
 
 extern "C" JNIEXPORT jint JNICALL
