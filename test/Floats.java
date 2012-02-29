@@ -3,6 +3,18 @@ public class Floats {
     if (! v) throw new RuntimeException();
   }
 
+  private static void expectEqual(long expected, long found) {
+    if(expected != found) {
+      throw new RuntimeException("expected: 0x" + Long.toHexString(expected) + " found: 0x" + Long.toHexString(found));
+    }
+  }
+
+  private static void expectEqual(double expected, double found) {
+    if(expected != found) {
+      throw new RuntimeException("expected: " + expected + " found: " + found);
+    }
+  }
+
   private static double multiply(double a, double b) {
     return a * b;
   }
@@ -195,15 +207,15 @@ public class Floats {
       expect(((long) f) == 1);
     }
 
-    expect(Math.round(0.4f) == 0);
-    expect(Math.round(0.5f) == 1);
-    expect(Math.round(1.0f) == 1);
-    expect(Math.round(1.9f) == 2);
+    expectEqual(0, Math.round(0.4f));
+    expectEqual(1, Math.round(0.5f));
+    expectEqual(1, Math.round(1.0f));
+    expectEqual(2, Math.round(1.9f));
 
-    expect(Math.round(0.4d) == 0);
-    expect(Math.round(0.5d) == 1);
-    expect(Math.round(1.0d) == 1);
-    expect(Math.round(1.9d) == 2);
+    expectEqual(0, Math.round(0.4d));
+    expectEqual(1, Math.round(0.5d));
+    expectEqual(1, Math.round(1.0d));
+    expectEqual(2, Math.round(1.9d));
 
     { float b = 1.0f;
       int blue = (int)(b * 255 + 0.5);
@@ -212,7 +224,7 @@ public class Floats {
 
     { long z = 6553311036568663L;
       double d = (double) z;
-      expect(d == 6553311036568663.0);
+      expectEqual(6553311036568663.0, d);
     }
 
     { long z = 12345L;
@@ -236,7 +248,7 @@ public class Floats {
       float NaN = Float.intBitsToFloat(orig);
       int result = Float.floatToIntBits(NaN);
       int expected = 0x7fc00000;
-      expect(result == expected);
+      expectEqual(expected, result);
     }
     
     { 
@@ -244,21 +256,21 @@ public class Floats {
       float NaN = Float.intBitsToFloat(orig);
       int result = Float.floatToIntBits(NaN);
       int expected = 0x7fc00000;
-      expect(result == expected);
+      expectEqual(expected, result);
     }
     
     {
       int orig = 0x00800001;
       float number = Float.intBitsToFloat(orig);
       int result = Float.floatToIntBits(number);
-      expect(result == orig);
+      expectEqual(orig, result);
     }
     
     {
       int orig = 0x80800003;
       float number = Float.intBitsToFloat(orig);
       int result = Float.floatToIntBits(number);
-      expect(result == orig);
+      expectEqual(orig, result);
     }
   }
 }

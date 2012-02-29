@@ -37,49 +37,59 @@ public class AllFloats {
   private static void expect(boolean v) {
     if(!v)throw new RuntimeException();
   }
+
+  private static void expectEqual(double expected, double found) {
+    if(expected != found) {
+      throw new RuntimeException("expected: " + expected + " found: " + found);
+    }
+  }
   
   private static int last(){return 0;}
   
   public static void main(String[] args) {
-    expect(multiplyByFive(36f) == 5f * 36f);
-    expect(multiplyByFive(36d) == 5d * 36d);
-    expect(multiply(5f, 4f) == 5f*4f);
-    expect(multiply(5d, 4d) == 5d*4d);
-    expect(multiply(5f, 4d) == 5f*4d);
-    expect(divide(5f, 2f) == 5f/2f);
-    expect(divide(5d, 2d) == 5d/2d);
-    expect(divide(5f, 2d) == 5f/2d);
-    expect(remainder(5f, 2f) == 5f%2f);
-    expect(remainder(5d, 2d) == 5d%2d);
-    expect(remainder(5f, 2d) == 5f%2d);
-    expect(add(5f, 4f) == 5f+4f);
-    expect(add(5d, 4d) == 5f+4d);
-    expect(add(5f, 4d) == 5f+4d);
-    expect(subtract(5f, 4f) == 5f-4f);
-    expect(subtract(5d, 4d) == 5f-4d);
-    expect(subtract(5f, 4d) == 5f-4d);
-    expect(complex(4f, 3f) == (4f-3f)/(4f*3f) + 2f);
-    expect(complex(4d, 3d) == (4d-3d)/(4d*3d) + 2d);
-    expect(complex(4f, 3d) == (4f-3d)/(4f*3d) + 2f);
-    expect(complexNoIntrinsic(4f, 3f) == (4f-3f)/(4f*3f) + 2f);
+    expectEqual(5f * 36f, multiplyByFive(36f));
+
+    expectEqual(5d*36d, multiplyByFive(36d));
+    expectEqual(5f*4f, multiply(5f, 4f));
+    expectEqual(5d*4d, multiply(5d, 4d));
+    expectEqual(5f*4d, multiply(5f, 4d));
+    expectEqual(5f/2f, divide(5f, 2f));
+    expectEqual(5d/2d, divide(5d, 2d));
+    expectEqual(5f/2d, divide(5f, 2d));
+
+    expectEqual(5f%2f, remainder(5f, 2f));
+
+    expectEqual(5f%2f, remainder(5f, 2f));
+    expectEqual(5d%2d, remainder(5d, 2d));
+    expectEqual(5f%2d, remainder(5f, 2d));
+    expectEqual(5f+4f, add(5f, 4f));
+    expectEqual(5f+4d, add(5d, 4d));
+    expectEqual(5f+4d, add(5f, 4d));
+    expectEqual(5f-4f, subtract(5f, 4f));
+    expectEqual(5f-4d, subtract(5d, 4d));
+    expectEqual(5f-4d, subtract(5f, 4d));
+    expectEqual((4f-3f)/(4f*3f) + 2f, complex(4f, 3f));
+    expectEqual((4d-3d)/(4d*3d) + 2d, complex(4d, 3d));
+    expectEqual((4f-3d)/(4f*3d) + 2f, complex(4f, 3d));
+    expectEqual((4f-3f)/(4f*3f) + 2f, complexNoIntrinsic(4f, 3f));
     
-    expect(f2i(4f) == 4);
-    expect(f2l(4f) == 4);
-    expect(i2f(4) == 4f);
-    expect(i2d(4) == 4d);
+    expectEqual( 4, f2i(4f));
+    expectEqual( 4, f2l(4f));
+    expectEqual( 4f, i2f(4));
+    expectEqual( 4d, i2d(4));
     
-    expect(d2i(4d) == 4);
-    expect(d2l(4d) == 4);
-    expect(l2f(4) == 4f);
-    expect(l2d(4) == 4d);
+    expectEqual( 4, d2i(4d));
+    expectEqual( 4, d2l(4d));
+    expectEqual( 4f, l2f(4));
+    expectEqual( 4d, l2d(4));
+
+    expectEqual(-4f, negate(4f));
+    expectEqual(-4d, negate(4d));
     
-    expect(negate(4f) == -4f);
-    expect(negate(4d) == -4d);
-    
-    expect(abs(-4) == 4);
-    expect(abs(12) == 12);
-    expect(abs(-4f) == 4f);
-    expect(abs(12f) == 12f);
+    expectEqual( 4, abs(-4));
+    expectEqual( 12, abs(12));
+    expectEqual( 4f, abs(-4f));
+    expectEqual( 12f, abs(12f));
     
     int unused = last();
   }

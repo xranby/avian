@@ -38,6 +38,18 @@ public class Reflection {
     if (! v) throw new RuntimeException();
   }
 
+  public static void expectEqual(float expected, float found) {
+    if(expected != found) {
+      throw new RuntimeException("expected: " + expected + " found: " + found);
+    }
+  }
+
+  public static void expectEqual(double expected, double found) {
+    if(expected != found) {
+      throw new RuntimeException("expected: " + expected + " found: " + found);
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     Class system = Class.forName("java.lang.System");
     Field out = system.getDeclaredField("out");
@@ -59,13 +71,13 @@ public class Reflection {
     expect(4 == (Integer) Reflection.class.getMethod
            ("intMethod").invoke(null));
 
-    expect(5.0 == (Float) Reflection.class.getMethod
+    expectEqual(5.0f, (Float) Reflection.class.getMethod
            ("floatMethod").invoke(null));
 
     expect(6 == (Long) Reflection.class.getMethod
            ("longMethod").invoke(null));
 
-    expect(7.0 == (Double) Reflection.class.getMethod
+    expectEqual(7.0, (Double) Reflection.class.getMethod
            ("doubleMethod").invoke(null));
   }
 }
