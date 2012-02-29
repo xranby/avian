@@ -46,7 +46,7 @@ GLOBAL(vmInvoke):
    // %r8 : arguments
    // %r9 : argumentsFootprint
    // 48(%rbp) : frameSize
-   // 56(%rbp) : returnType (ignored)
+   // 56(%rbp) : returnType
    
    // allocate stack space for callee-saved registers
    subq   $CALLEE_SAVED_REGISTER_FOOTPRINT,%rsp
@@ -98,6 +98,16 @@ GLOBAL(vmInvoke_returnAddress):
    // a reliable stack trace from a thread that might be interrupted at
    // any point in its execution.
    movq   $0,THREAD_STACK(%rbx)
+
+   // copy float result to integer return register, if applicable
+   movq   CALLEE_SAVED_REGISTER_FOOTPRINT+56(%rsp), %r13
+   cmpq   $FLOAT_TYPE,%r13
+   je     LOCAL(vmInvoke_copy)
+   cmpq   $DOUBLE_TYPE,%r13
+   jne    LOCAL(vmInvoke_exit)
+LOCAL(vmInvoke_copy):
+   movq   %xmm0,%rax
+LOCAL(vmInvoke_exit):
    
 .globl GLOBAL(vmInvoke_safeStack)
 GLOBAL(vmInvoke_safeStack):
@@ -169,7 +179,7 @@ LOCAL(vmJumpAndInvoke_argumentTest):
 
 #else // not __MINGW32__ || __CYGWIN32__
 
-#define CALLEE_SAVED_REGISTER_FOOTPRINT 48 + ALIGNMENT_ADJUSTMENT
+#define CALLEE_SAVED_REGISTER_FOOTPRINT 56 + ALIGNMENT_ADJUSTMENT
 
 .globl GLOBAL(vmInvoke)
 GLOBAL(vmInvoke):
@@ -181,7 +191,7 @@ GLOBAL(vmInvoke):
    // %rdx: arguments
    // %rcx: argumentFootprint
    // %r8 : frameSize
-   // %r9 : returnType (ignored)
+   // %r9 : returnType
    
    // allocate stack space for callee-saved registers
    subq   $CALLEE_SAVED_REGISTER_FOOTPRINT,%rsp
@@ -196,6 +206,9 @@ GLOBAL(vmInvoke):
    movq   %r13,16(%rsp)
    movq   %r14,24(%rsp)
    movq   %r15,32(%rsp)
+
+   // also save returnType, as we'll need it later
+   movq   %r9,40(%rsp)
    
    // allocate stack space for arguments
    subq   %r8,%rsp
@@ -238,12 +251,22 @@ GLOBAL(vmInvoke_safeStack):
 #  include "continuations-x86.S"
 #endif // AVIAN_CONTINUATIONS
 
+   // copy float result to integer return register, if applicable
+   movq   40(%rsp), %r13
+   cmpq   $FLOAT_TYPE,%r13
+   je     LOCAL(vmInvoke_copy)
+   cmpq   $DOUBLE_TYPE,%r13
+   jne    LOCAL(vmInvoke_exit)
+LOCAL(vmInvoke_copy):
+   movq   %xmm0,%rax
+
    // restore callee-saved registers
    movq   0(%rsp),%rbx
    movq   8(%rsp),%r12
    movq   16(%rsp),%r13
    movq   24(%rsp),%r14
    movq   32(%rsp),%r15
+LOCAL(vmInvoke_exit):
 
    addq   $CALLEE_SAVED_REGISTER_FOOTPRINT,%rsp
    

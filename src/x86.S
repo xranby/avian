@@ -142,19 +142,19 @@ LOCAL(loopend):
 LOCAL(call):
    call *%r10
    
-LOCAL(void):
-   cmpq   $VOID_TYPE,%r13
-   jne    LOCAL(float)
-   jmp    LOCAL(exit)
+// LOCAL(void):
+//    cmpq   $VOID_TYPE,%r13
+//    jne    LOCAL(float)
+//    jmp    LOCAL(exit)
    
-LOCAL(float):
-   cmpq   $FLOAT_TYPE,%r13
-   je     LOCAL(copy)
-   cmpq   $DOUBLE_TYPE,%r13
-   jne    LOCAL(exit)
+// LOCAL(float):
+//    cmpq   $FLOAT_TYPE,%r13
+//    je     LOCAL(copy)
+//    cmpq   $DOUBLE_TYPE,%r13
+//    jne    LOCAL(exit)
    
-LOCAL(copy):
-   movq   %xmm0,%rax
+// LOCAL(copy):
+//    movq   %xmm0,%rax
    
 LOCAL(exit):
    
@@ -321,28 +321,28 @@ LOCAL(call):
    call   *-48(%rbp)
    
    // handle return value based on expected type
-   movq   -8(%rbp),%rcx
+   // movq   -8(%rbp),%rcx
 
-LOCAL(void):
-   cmpq   $VOID_TYPE,%rcx
-   jne    LOCAL(float)
-   jmp    LOCAL(exit)
+// LOCAL(void):
+//    cmpq   $VOID_TYPE,%rcx
+//    jne    LOCAL(float)
+//    jmp    LOCAL(exit)
    
-LOCAL(float):
-   cmpq   $FLOAT_TYPE,%rcx
-   je     LOCAL(copy)
-   cmpq   $DOUBLE_TYPE,%rcx
-   jne    LOCAL(exit)
+// LOCAL(float):
+//    cmpq   $FLOAT_TYPE,%rcx
+//    je     LOCAL(copy)
+//    cmpq   $DOUBLE_TYPE,%rcx
+//    jne    LOCAL(exit)
    
-LOCAL(copy):
-#ifdef __APPLE__
-   // as of OS X 10.6, Apple is still using an assembler that doesn't
-   // understand movq SSE,GPR, but movd does the same thing, despite
-   // the name
-   movd   %xmm0,%rax
-#else
-   movq   %xmm0,%rax
-#endif
+// LOCAL(copy):
+// #ifdef __APPLE__
+//    // as of OS X 10.6, Apple is still using an assembler that doesn't
+//    // understand movq SSE,GPR, but movd does the same thing, despite
+//    // the name
+//    movd   %xmm0,%rax
+// #else
+//    movq   %xmm0,%rax
+// #endif
 
 LOCAL(exit):
    movq   %rbp,%rsp
@@ -487,7 +487,7 @@ LOCAL(int64):
    cmpl   $INT64_TYPE,%ecx
    jne    LOCAL(float)
    jmp    LOCAL(exit)
-   
+
 LOCAL(float):
    cmpl   $FLOAT_TYPE,%ecx
    jne    LOCAL(double)

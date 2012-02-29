@@ -38,7 +38,7 @@ namespace {
 
 namespace local {
 
-const bool DebugCompile = false;
+const bool DebugCompile = true;
 const bool DebugNatives = false;
 const bool DebugCallTable = false;
 const bool DebugMethodTree = false;
@@ -78,7 +78,7 @@ enum ThunkIndex {
   throwArrayIndexOutOfBoundsIndex,
   throwStackOverflowIndex,
 
-#define THUNK(s) s##Index,
+#define THUNK(type, s) s##Index,
 #include "thunks.cpp"
 #undef THUNK
 
@@ -949,7 +949,7 @@ makeRootTable(MyThread* t, Zone* zone, object method)
 }
 
 enum Thunk {
-#define THUNK(s) s##Thunk,
+#define THUNK(type, s) s##Thunk,
 
 #include "thunks.cpp"
 
@@ -2494,52 +2494,52 @@ compareLongs(uint64_t b, uint64_t a)
   }
 }
 
-uint64_t
+double
 addDouble(uint64_t b, uint64_t a)
 {
-  return doubleToBits(bitsToDouble(a) + bitsToDouble(b));
+  return bitsToDouble(a) + bitsToDouble(b);
 }
 
-uint64_t
+double
 subtractDouble(uint64_t b, uint64_t a)
 {
-  return doubleToBits(bitsToDouble(a) - bitsToDouble(b));
+  return bitsToDouble(a) - bitsToDouble(b);
 }
 
-uint64_t
+double
 multiplyDouble(uint64_t b, uint64_t a)
 {
-  return doubleToBits(bitsToDouble(a) * bitsToDouble(b));
+  return bitsToDouble(a) * bitsToDouble(b);
 }
 
-uint64_t
+double
 divideDouble(uint64_t b, uint64_t a)
 {
-  return doubleToBits(bitsToDouble(a) / bitsToDouble(b));
+  return bitsToDouble(a) / bitsToDouble(b);
 }
 
-uint64_t
+double
 moduloDouble(uint64_t b, uint64_t a)
 {
-  return doubleToBits(fmod(bitsToDouble(a), bitsToDouble(b)));
+  return fmod(bitsToDouble(a), bitsToDouble(b));
 }
 
-uint64_t
+double
 negateDouble(uint64_t a)
 {
-  return doubleToBits(- bitsToDouble(a));
+  return - bitsToDouble(a);
 }
 
-uint64_t
+double
 squareRootDouble(uint64_t a)
 {
-  return doubleToBits(sqrt(bitsToDouble(a)));
+  return sqrt(bitsToDouble(a));
 }
 
-uint64_t
+float
 doubleToFloat(int64_t a)
 {
-  return floatToBits(static_cast<float>(bitsToDouble(a)));
+  return static_cast<float>(bitsToDouble(a));
 }
 
 int64_t
@@ -2554,46 +2554,46 @@ doubleToLong(int64_t a)
   return static_cast<int64_t>(bitsToDouble(a));
 }
 
-uint64_t
+float
 addFloat(uint32_t b, uint32_t a)
 {
-  return floatToBits(bitsToFloat(a) + bitsToFloat(b));
+  return bitsToFloat(a) + bitsToFloat(b);
 }
 
-uint64_t
+float
 subtractFloat(uint32_t b, uint32_t a)
 {
-  return floatToBits(bitsToFloat(a) - bitsToFloat(b));
+  return bitsToFloat(a) - bitsToFloat(b);
 }
 
-uint64_t
+float
 multiplyFloat(uint32_t b, uint32_t a)
 {
-  return floatToBits(bitsToFloat(a) * bitsToFloat(b));
+  return bitsToFloat(a) * bitsToFloat(b);
 }
 
-uint64_t
+float
 divideFloat(uint32_t b, uint32_t a)
 {
-  return floatToBits(bitsToFloat(a) / bitsToFloat(b));
+  return bitsToFloat(a) / bitsToFloat(b);
 }
 
-uint64_t
+float
 moduloFloat(uint32_t b, uint32_t a)
 {
-  return floatToBits(fmod(bitsToFloat(a), bitsToFloat(b)));
+  return fmod(bitsToFloat(a), bitsToFloat(b));
 }
 
-uint64_t
+float
 negateFloat(uint32_t a)
 {
-  return floatToBits(- bitsToFloat(a));
+  return - bitsToFloat(a);
 }
 
-uint64_t
+float
 absoluteFloat(uint32_t a)
 {
-  return floatToBits(fabsf(bitsToFloat(a)));
+  return fabsf(bitsToFloat(a));
 }
 
 int64_t
@@ -2684,10 +2684,10 @@ moduloInt(MyThread* t, int32_t b, int32_t a)
   }
 }
 
-uint64_t
+double
 floatToDouble(int32_t a)
 {
-  return doubleToBits(static_cast<double>(bitsToFloat(a)));
+  return static_cast<double>(bitsToFloat(a));
 }
 
 int64_t
@@ -2702,28 +2702,28 @@ floatToLong(int32_t a)
   return static_cast<int64_t>(bitsToFloat(a));
 }
 
-uint64_t
+double
 intToDouble(int32_t a)
 {
-  return doubleToBits(static_cast<double>(a));
+  return static_cast<double>(a);
 }
 
-uint64_t
+float
 intToFloat(int32_t a)
 {
-  return floatToBits(static_cast<float>(a));
+  return static_cast<float>(a);
 }
 
-uint64_t
+double
 longToDouble(int64_t a)
 {
-  return doubleToBits(static_cast<double>(a));
+  return static_cast<double>(a);
 }
 
-uint64_t
+float
 longToFloat(int64_t a)
 {
-  return floatToBits(static_cast<float>(a));
+  return static_cast<float>(a);
 }
 
 uint64_t
@@ -7005,11 +7005,11 @@ finish(MyThread* t, FixedAllocator* allocator, Context* context)
       ::strcmp
       (reinterpret_cast<const char*>
        (&byteArrayBody(t, className(t, methodClass(t, context->method)), 0)),
-       "java/lang/System") == 0 and
+       "AllFloats") == 0 and
       ::strcmp
       (reinterpret_cast<const char*>
        (&byteArrayBody(t, methodName(t, context->method), 0)),
-       "<clinit>") == 0)
+       "remainder") == 0)
   {
     trap();
   }
@@ -8346,7 +8346,7 @@ class MyProcessor: public Processor {
     thunkTable[throwArrayIndexOutOfBoundsIndex] = voidPointer
       (throwArrayIndexOutOfBounds);
     thunkTable[throwStackOverflowIndex] = voidPointer(throwStackOverflow);
-#define THUNK(s) thunkTable[s##Index] = voidPointer(s);
+#define THUNK(type, s) thunkTable[s##Index] = voidPointer(s);
 #include "thunks.cpp"
 #undef THUNK
     // Set the dummyIndex entry to a constant which should require the
@@ -9501,6 +9501,7 @@ compileCall(MyThread* t, Context* c, ThunkIndex index, bool call = true)
     a->apply
       (call ? LongCall : LongJump, TargetBytesPerWord, ConstantOperand, &proc);
   }
+
 }
 
 void
@@ -9587,6 +9588,17 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
     a->pushFrame(1, TargetBytesPerWord, RegisterOperand, &thread);
 
     compileCall(t, &context, invokeNativeIndex);
+
+    // If we have a floating-point return register, make sure the return value gets there too.
+    // This shouldn't (fingers crossed) have any implications on normal return values,
+    // barring strange architectures with overlapping general and floating-point registers.
+    int retFloat = t->arch->returnFloat();
+    if(retFloat != NoRegister) {
+      Assembler::Register result(t->arch->returnLow(), t->arch->returnHigh());
+      Assembler::Register rf(retFloat);
+      a->apply(Move, 8, RegisterOperand, &result,
+        8, RegisterOperand, &rf);
+    }
   
     a->popFrameAndUpdateStackAndReturn
       (t->arch->alignFrameSize(1), TargetThreadStack);
@@ -9651,7 +9663,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
 
     uint8_t* start = p->thunks.table.start;
 
-#define THUNK(s) {                                                      \
+#define THUNK(type, s) {                                                \
       Context context(t);                                               \
       Assembler* a = context.assembler;                                 \
                                                                         \

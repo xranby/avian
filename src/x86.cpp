@@ -2535,6 +2535,18 @@ absoluteRR(Context* c, unsigned aSize, Assembler::Register* a,
   c->client->releaseTemporary(rdx);
 }
 
+void
+floatStackStore(Context* c, unsigned aSize, Assembler::Memory* a)
+{
+  assert(c, TargetBytesPerWord == 4);
+  if(aSize == 4) {
+    opcode(c, 0xd9);
+  } else {
+    opcode(c, 0xdd);
+  }
+  modrmSibImm(c, 2, a->scale, a->index, a->base, a->offset);
+}
+
 unsigned
 argumentFootprint(unsigned footprint)
 {
@@ -2781,6 +2793,11 @@ class MyArchitecture: public Assembler::Architecture {
 
   virtual int returnHigh() {
     return (TargetBytesPerWord == 4 ? rdx : NoRegister);
+  }
+
+  virtual int returnFloat() {
+    // use xmm0 only when we can GUARANTEE it's presence, to avoid complication in x86.S
+    return (TargetBytesPerWord == 8 ? xmm0 : NoRegister);
   }
 
   virtual int virtualCallTarget() {
@@ -3608,6 +3625,28 @@ class MyAssembler: public Assembler {
     moveMR(&c, TargetBytesPerWord, &stackSrc, TargetBytesPerWord, &stack);
 
     jumpR(&c, TargetBytesPerWord, &returnAddress);
+  }
+
+  virtual void marshallNativeReturn(unsigned type) {
+    if(TargetBytesPerWord == 4) {
+      Register rlow(rax);
+      Register rhigh(rdx);
+      Memory stackTemp(rsp, 0);
+      switch(type) {
+      case DOUBLE_TYPE:
+        pushR(&c, TargetBytesPerWord, &rlow);
+        pushR(&c, TargetBytesPerWord, &rhigh);
+        floatStackStore(&c, 8, &stackTemp);
+        popR(&c, TargetBytesPerWord, &rlow);
+        popR(&c, TargetBytesPerWord, &rhigh);
+        break;
+      case FLOAT_TYPE:
+        pushR(&c, TargetBytesPerWord, &rlow);
+        floatStackStore(&c, 4, &stackTemp);
+        popR(&c, TargetBytesPerWord, &rlow);
+        break;
+      }
+    }
   }
 
   virtual void apply(Operation op) {

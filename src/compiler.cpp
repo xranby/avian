@@ -3152,13 +3152,19 @@ saveLocals(Context* c, Event* e)
   }
 }
 
+enum CallingConvention {
+  NativeCall,
+  StackCall,
+};
+
 class CallEvent: public Event {
  public:
-  CallEvent(Context* c, Value* address, unsigned flags,
+  CallEvent(Context* c, CallingConvention convention, Value* address, unsigned flags,
             TraceHandler* traceHandler, Value* result, unsigned resultSize,
             Stack* argumentStack, unsigned argumentCount,
             unsigned stackArgumentFootprint):
     Event(c),
+    convention(convention),
     address(address),
     traceHandler(traceHandler),
     result(result),
@@ -3438,9 +3444,26 @@ class CallEvent: public Event {
     clean(c, this, stackBefore, localsBefore, reads, popIndex);
 
     if (resultSize and live(c, result)) {
-      addSite(c, result, registerSite(c, c->arch->returnLow()));
-      if (resultSize > TargetBytesPerWord and live(c, result->nextWord)) {
-        addSite(c, result->nextWord, registerSite(c, c->arch->returnHigh()));
+      if(convention == NativeCall) {
+        unsigned type = POINTER_TYPE;
+        if(result->type == ValueFloat) {
+          if(resultSize == 4) {
+            type = FLOAT_TYPE;
+          } else {
+            type = DOUBLE_TYPE;
+          }
+        }
+        c->assembler->marshallNativeReturn(type);
+      }
+
+      int retFloat = c->arch->returnFloat();
+      if(result->type == ValueFloat && retFloat != NoRegister) {
+        addSite(c, result, registerSite(c, retFloat));
+      } else {
+        addSite(c, result, registerSite(c, c->arch->returnLow()));
+        if (resultSize > TargetBytesPerWord and live(c, result->nextWord)) {
+          addSite(c, result->nextWord, registerSite(c, c->arch->returnHigh()));
+        }
       }
     }
   }
@@ -3449,6 +3472,7 @@ class CallEvent: public Event {
     return (flags & Compiler::TailJump) != 0;
   }
 
+  CallingConvention convention;
   Value* address;
   TraceHandler* traceHandler;
   Value* result;
@@ -3462,13 +3486,13 @@ class CallEvent: public Event {
 };
 
 void
-appendCall(Context* c, Value* address, unsigned flags,
+appendCall(Context* c, CallingConvention convention, Value* address, unsigned flags,
            TraceHandler* traceHandler, Value* result, unsigned resultSize,
            Stack* argumentStack, unsigned argumentCount,
            unsigned stackArgumentFootprint)
 {
   append(c, new (c->zone->allocate(sizeof(CallEvent)))
-         CallEvent(c, address, flags, traceHandler, result,
+         CallEvent(c, convention, address, flags, traceHandler, result,
                    resultSize, argumentStack, argumentCount,
                    stackArgumentFootprint));
 }
@@ -3488,8 +3512,13 @@ class ReturnEvent: public Event {
     Event(c), value(value)
   {
     if (value) {
-      addReads(c, this, value, size, fixedRegisterMask(c->arch->returnLow()),
-               fixedRegisterMask(c->arch->returnHigh()));
+      int retFloat = c->arch->returnFloat();
+      if(value->type == ValueFloat && retFloat != NoRegister) {
+        addRead(c, this, value, fixedRegisterMask(retFloat));
+      } else {
+        addReads(c, this, value, size, fixedRegisterMask(c->arch->returnLow()),
+                 fixedRegisterMask(c->arch->returnHigh()));
+      }
     }
   }
 
@@ -4446,7 +4475,7 @@ appendCombine(Context* c, TernaryOperation type,
     c->stack = oldStack;
 
     appendCall
-      (c, value(c, ValueGeneral, constantSite(c, handler)), 0, 0, result,
+      (c, NativeCall, value(c, ValueGeneral, constantSite(c, handler)), 0, 0, result,
        resultSize, argumentStack, stackSize, 0);
   } else {
     append
@@ -4562,7 +4591,7 @@ appendTranslate(Context* c, BinaryOperation type, unsigned firstSize,
     c->stack = oldStack;
 
     appendCall
-      (c, value
+      (c, NativeCall, value
        (c, ValueGeneral, constantSite
         (c, c->client->getThunk(type, firstSize, resultSize))),
        0, 0, result, resultSize, argumentStack,
@@ -4898,7 +4927,7 @@ appendBranch(Context* c, TernaryOperation type, unsigned size, Value* first,
 
     Value* result = value(c, ValueGeneral);
     appendCall
-      (c, value
+      (c, NativeCall, value
        (c, ValueGeneral, constantSite(c, handler)), 0, 0, result, 4,
        argumentStack, ceiling(size, TargetBytesPerWord) * 2, 0);
 
@@ -6393,7 +6422,7 @@ class MyCompiler: public Compiler {
     }
 
     Value* result = value(&c, valueType(&c, resultType));
-    appendCall(&c, static_cast<Value*>(address), flags, traceHandler, result,
+    appendCall(&c, NativeCall, static_cast<Value*>(address), flags, traceHandler, result,
                resultSize, argumentStack, index, 0);
 
     return result;
@@ -6407,7 +6436,7 @@ class MyCompiler: public Compiler {
                              unsigned argumentFootprint)
   {
     Value* result = value(&c, valueType(&c, resultType));
-    appendCall(&c, static_cast<Value*>(address), flags, traceHandler, result,
+    appendCall(&c, StackCall, static_cast<Value*>(address), flags, traceHandler, result,
                resultSize, c.stack, 0, argumentFootprint);
     return result;
   }

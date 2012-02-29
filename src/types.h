@@ -19,5 +19,10 @@
 #define FLOAT_TYPE 5
 #define DOUBLE_TYPE 6
 #define POINTER_TYPE 7
+#define DOUBLE_LOW_TYPE 8
+#define DOUBLE_HIGH_TYPE 9
+#define INT64_LOW_TYPE 10
+#define INT64_HIGH_TYPE 11
+
 
 #endif//TYPES_H

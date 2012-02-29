@@ -1803,6 +1803,10 @@ class MyArchitecture: public Assembler::Architecture {
     return 1;
   }
 
+  virtual int returnFloat() {
+    return NoRegister;
+  }
+
   virtual int virtualCallTarget() {
     return 4;
   }
@@ -2322,6 +2326,17 @@ class MyAssembler: public Assembler {
     moveMR(&c, TargetBytesPerWord, &newStackSrc, TargetBytesPerWord, &stack);
 
     return_(&c);
+  }
+
+  virtual void marshallNativeReturn(unsigned type) {
+    switch(type) {
+    case DOUBLE_TYPE:
+      // TODO
+      break;
+    case FLOAT_TYPE:
+      // TODO
+      break;
+    }
   }
 
   virtual void apply(Operation op) {

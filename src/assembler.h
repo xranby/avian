@@ -334,6 +334,7 @@ class Assembler {
     virtual int thread() = 0;
     virtual int returnLow() = 0;
     virtual int returnHigh() = 0;
+    virtual int returnFloat() = 0;
     virtual int virtualCallTarget() = 0;
     virtual int virtualCallIndex() = 0;
 
@@ -433,6 +434,8 @@ class Assembler {
   virtual void popFrameAndUpdateStackAndReturn(unsigned frameFootprint,
                                                unsigned stackOffsetFromThread)
   = 0;
+
+  virtual void marshallNativeReturn(unsigned type) = 0;
 
   virtual void apply(Operation op) = 0;
 
