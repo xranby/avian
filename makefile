@@ -527,7 +527,8 @@ vm-sources = \
 	$(src)/classpath-$(classpath).cpp \
 	$(src)/builtin.cpp \
 	$(src)/jnienv.cpp \
-	$(src)/process.cpp
+	$(src)/process.cpp \
+	$(src)/debug-gdb.cpp
 
 vm-asm-sources = $(src)/$(asm).S
 
@@ -621,6 +622,7 @@ static-library = $(build)/lib$(name).a
 executable = $(build)/$(name)${exe-suffix}
 dynamic-library = $(build)/$(so-prefix)jvm$(so-suffix)
 executable-dynamic = $(build)/$(name)-dynamic${exe-suffix}
+gdb-plugin = $(build)/$(so-prefix)$(name)-gdb-plugin$(so-suffix)
 
 ifneq ($(classpath),avian)
 # Assembler, ConstantPool, and Stream are not technically needed for a
@@ -695,6 +697,14 @@ test-args = $(test-flags) $(input)
 .PHONY: build
 build: $(static-library) $(executable) $(dynamic-library) \
 	$(executable-dynamic) $(classpath-dep) $(test-dep) $(test-extra-dep)
+
+.PHONY: gdb-plugin
+gdb-plugin: $(gdb-plugin)
+
+$(gdb-plugin): src/gdb-plugin.cpp
+	mkdir -p $(build)
+	echo Compiling gdb-plugin
+	$(cxx) -shared -fPIC src/gdb-plugin.cpp -o $(gdb-plugin)
 
 $(test-dep): $(classpath-dep)
 

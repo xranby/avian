@@ -16,6 +16,7 @@
 #include "target.h"
 #include "compiler.h"
 #include "arch.h"
+#include "debug-gdb.h"
 
 using namespace vm;
 
@@ -1205,7 +1206,7 @@ class Context {
     MyThread* t;
   };
 
-  Context(MyThread* t, BootContext* bootContext, object method):
+  Context(MyThread* t, BootContext* bootContext = 0, object method = 0):
     thread(t),
     zone(t->m->system, t->m->heap, InitialZoneCapacityInBytes),
     assembler(makeAssembler(t->m->system, t->m->heap, &zone, t->arch)),
@@ -1216,8 +1217,8 @@ class Context {
     objectPool(0),
     subroutines(0),
     traceLog(0),
-    visitTable(makeVisitTable(t, &zone, method)),
-    rootTable(makeRootTable(t, &zone, method)),
+    visitTable(method ? makeVisitTable(t, &zone, method) : 0),
+    rootTable(method ? makeRootTable(t, &zone, method) : 0),
     subroutineTable(0),
     executableAllocator(0),
     executableStart(0),
@@ -1227,32 +1228,6 @@ class Context {
     dirtyRoots(false),
     leaf(true),
     eventLog(t->m->system, t->m->heap, 1024),
-    protector(this),
-    resource(this)
-  { }
-
-  Context(MyThread* t):
-    thread(t),
-    zone(t->m->system, t->m->heap, InitialZoneCapacityInBytes),
-    assembler(makeAssembler(t->m->system, t->m->heap, &zone, t->arch)),
-    client(t),
-    compiler(0),
-    method(0),
-    bootContext(0),
-    objectPool(0),
-    subroutines(0),
-    traceLog(0),
-    visitTable(0),
-    rootTable(0),
-    subroutineTable(0),
-    executableAllocator(0),
-    executableStart(0),
-    executableSize(0),
-    objectPoolCount(0),
-    traceLogCount(0),
-    dirtyRoots(false),
-    leaf(true),
-    eventLog(t->m->system, t->m->heap, 0),
     protector(this),
     resource(this)
   { }
@@ -6019,25 +5994,7 @@ FILE* compileLog = 0;
 
 void
 logCompile(MyThread* t, const void* code, unsigned size, const char* class_,
-           const char* name, const char* spec)
-{
-  static bool open = false;
-  if (not open) {
-    open = true;
-    const char* path = findProperty(t, "avian.jit.log");
-    if (path) {
-      compileLog = vm::fopen(path, "wb");
-    } else if (DebugCompile) {
-      compileLog = stderr;
-    }
-  }
-
-  if (compileLog) {
-    fprintf(compileLog, "%p %p %s.%s%s\n",
-            code, static_cast<const uint8_t*>(code) + size,
-            class_, name, spec);
-  }
-}
+           const char* name, const char* spec);
 
 int
 resolveIpForwards(Context* context, int start, int end)
@@ -7001,15 +6958,15 @@ finish(MyThread* t, FixedAllocator* allocator, Context* context)
      (&byteArrayBody(t, methodSpec(t, context->method), 0)));
 
   // for debugging:
-  if (false and
+  if (true and
       ::strcmp
       (reinterpret_cast<const char*>
        (&byteArrayBody(t, className(t, methodClass(t, context->method)), 0)),
-       "AllFloats") == 0 and
+       "Floats") == 0 and
       ::strcmp
       (reinterpret_cast<const char*>
        (&byteArrayBody(t, methodName(t, context->method), 0)),
-       "remainder") == 0)
+       "subtract") == 0)
   {
     trap();
   }
@@ -8338,7 +8295,8 @@ class MyProcessor: public Processor {
                         FixedSizeOfArithmeticException),
     codeAllocator(s, 0, 0),
     callTableSize(0),
-    useNativeFeatures(useNativeFeatures)
+    useNativeFeatures(useNativeFeatures),
+    compilationHandler(makeGdbCompilationHandler(s))
   {
     thunkTable[compileMethodIndex] = voidPointer(local::compileMethod);
     thunkTable[compileVirtualMethodIndex] = voidPointer(compileVirtualMethod);
@@ -8902,7 +8860,45 @@ class MyProcessor: public Processor {
   unsigned callTableSize;
   bool useNativeFeatures;
   void* thunkTable[dummyIndex + 1];
+  CompilationHandler* compilationHandler;
 };
+
+void
+logCompile(MyThread* t, const void* code, unsigned size, const char* class_,
+           const char* name, const char* spec)
+{
+  static bool open = false;
+  if (not open) {
+    open = true;
+    const char* path = findProperty(t, "avian.jit.log");
+    if (path) {
+      compileLog = vm::fopen(path, "wb");
+    } else if (DebugCompile) {
+      compileLog = stderr;
+    }
+  }
+
+  if (compileLog) {
+    fprintf(compileLog, "%p %p %s.%s%s\n",
+            code, static_cast<const uint8_t*>(code) + size,
+            class_, name, spec);
+  }
+
+  if(CompilationHandler* handler = processor(t)->compilationHandler) {
+    if(!class_) {
+      class_ = "(null)";
+    }
+    if(!name) {
+      name = "(null)";
+    }
+    if(!spec) {
+      spec = "(null)";
+    }
+    char* sym = (char*)malloc(strlen(class_) + strlen(name) + strlen(spec) + 2);
+    sprintf(sym, "%s.%s%s", class_, name, spec);
+    handler->compiled(code, size, sym);
+  }
+}
 
 void*
 compileMethod2(MyThread* t, void* ip)
