@@ -17,6 +17,29 @@ extern "C" {
 
 #include "common.h"
 
+namespace {
+
+const bool DebugBacktrace = false;
+
+class CodeRecord {
+public:
+  CodeRecord* next;
+  uint64_t begin;
+  uint64_t end;
+  uint64_t frameSize;
+  const char* name;
+
+  CodeRecord* find(uint64_t ip) {
+    CodeRecord* rec = this;
+    while(rec && !(rec->begin <= ip && rec->end > ip)) {
+      rec = rec->next;
+    }
+    return rec;
+  }
+};
+
+CodeRecord* currentRecords = 0;
+
 
 /* Parse the debug info off a block of memory, pointed to by MEMORY
    (already copied to GDB's address space) and MEMORY_SZ bytes long.
@@ -30,11 +53,16 @@ gdb_status readDbgInfo(gdb_reader_funcs *self,
                        gdb_symbol_callbacks *cb,
                        void *memory, long memory_sz)
 {
-  if(memory_sz < 2 * sizeof(uint64_t) + 1) {
-    fprintf(stderr, "Avian JIT reader: expected debug info of\n\tstruct{uint64_t begin, uint64_t end, char[] name};\n\tbut found size %d\n", memory_sz);
+  if(memory_sz < 3 * sizeof(uint64_t) + 1) {
+    fprintf(stderr, "Avian JIT reader: expected debug info of\n\tstruct{uint64_t begin, uint64_t end, char[] name};\n\tbut found size %ld\n", memory_sz);
     return GDB_FAIL;
   }
   uint64_t* data = static_cast<uint64_t*>(memory);
+
+  uint64_t start = data[0];
+  uint64_t length = data[1];
+  uint64_t frameSize = data[2];
+  const char* name = reinterpret_cast<char*>(&data[3]);
 
   // TODO: convert endian-ness, if necessary
 
@@ -43,12 +71,55 @@ gdb_status readDbgInfo(gdb_reader_funcs *self,
   // TODO: get real file info
   gdb_symtab* symtab = cb->symtab_open(cb, obj, "<generated_code>");
 
-  fprintf(stderr, "symbol %p %p %s\n", data[0], data[1], reinterpret_cast<char*>(&data[2]));
-  gdb_block* block = cb->block_open(cb, symtab, 0, data[0], data[1], reinterpret_cast<char*>(&data[2]));
+  gdb_block* block = cb->block_open(cb, symtab, 0, start, length, name);
 
   cb->symtab_close(cb, symtab);
   cb->object_close(cb, obj);
+
+  CodeRecord* rec = new CodeRecord();
+  rec->next = currentRecords;
+  rec->begin = start;
+  rec->end = start + length;
+  rec->frameSize = frameSize;
+  rec->name = strdup(name); 
+
+  currentRecords = rec;
+
   return GDB_SUCCESS;
+}
+
+enum DwarfRegisters {
+  RIP = 16,
+  RBP = 6,
+  RSP = 7,
+};
+
+bool readRegister(gdb_unwind_callbacks* cb, int dwarfRegister, uint64_t& value, int size) {
+  gdb_reg_value* reg = cb->reg_get(cb, dwarfRegister);
+  if(reg->size != size || !reg->defined) {
+    reg->free(reg);
+    return false;
+  }
+  memcpy(&value, reg->value, size);
+  reg->free(reg);
+  return true;
+}
+
+void myFree(gdb_reg_value* value) {
+  free(value);
+}
+
+void writeRegister(gdb_unwind_callbacks* cb, int dwarfRegister, uint64_t value, int size) {
+  gdb_reg_value* reg = (gdb_reg_value*)malloc(sizeof(gdb_reg_value) + size - 1);
+  reg->defined = 1;
+  reg->free = myFree;
+
+  memcpy(reg->value, &value, size);
+  cb->reg_set(cb, dwarfRegister, reg);
+}
+
+bool readMemory(gdb_unwind_callbacks* cb, uint64_t addr, uint64_t& value, int size) {
+  return cb->target_read(addr, &value, size) == GDB_SUCCESS;
 }
 
 /* Unwind the current frame, CB is the set of unwind callbacks that
@@ -59,7 +130,47 @@ gdb_status readDbgInfo(gdb_reader_funcs *self,
 gdb_status unwindStack(gdb_reader_funcs *self,
                        gdb_unwind_callbacks *cb)
 {
-  return GDB_FAIL;
+  uint64_t ip;
+  uint64_t sp;
+
+  if(!readRegister(cb, RIP, ip, 8) || !readRegister(cb, RSP, sp, 8)) {
+    if(DebugBacktrace) {
+      fprintf(stderr, "fail\n");
+    }
+    return GDB_FAIL;
+  }
+
+  if(DebugBacktrace) {
+    fprintf(stderr, "cont 0x%lx\n", ip);
+  }
+
+  if(CodeRecord* rec = currentRecords->find(ip)) {
+    if(DebugBacktrace) {
+      fprintf(stderr, "sp: 0x%lx, ip: 0x%lx framesize: %ld\n", sp, ip, rec->frameSize);
+    }
+    uint64_t bp = sp + rec->frameSize;
+
+    uint64_t at_bp;
+    uint64_t at_bpm1;
+    uint64_t at_bpp1;
+
+    if(!readMemory(cb, bp, at_bp, 8) || !readMemory(cb, bp-8, at_bpm1, 8) || !readMemory(cb, bp+8, at_bpp1, 8)) {
+      return GDB_FAIL;
+    }
+    if(DebugBacktrace) {
+      fprintf(stderr, "bp: 0x%lx\n", bp);
+      fprintf(stderr, "at_bpm1: 0x%lx\n", at_bpm1);
+      fprintf(stderr, "at_bp: 0x%lx\n", at_bp);
+      fprintf(stderr, "at_bpp1: 0x%lx\n", at_bpp1);
+    }
+
+    writeRegister(cb, RIP, at_bp, 8);
+    writeRegister(cb, RSP, bp + 8, 8);
+
+    return GDB_SUCCESS;
+  } else {
+    return GDB_FAIL;
+  }
 }
 
 /* Return the frame ID corresponding to the current frame, using C to
@@ -67,13 +178,30 @@ gdb_status unwindStack(gdb_reader_funcs *self,
    gdb_frame_id.  */
 
 gdb_frame_id getFrameId(gdb_reader_funcs *self,
-                         gdb_unwind_callbacks *c)
+                         gdb_unwind_callbacks *cb)
 {
-  // TODO
-  gdb_frame_id ret = {
-    0,
-    0,
-  };
+  uint64_t ip;
+  uint64_t sp;
+
+  if(!readRegister(cb, RIP, ip, 8) || !readRegister(cb, RSP, sp, 8)) {
+    gdb_frame_id ret = {0, 0};
+    return ret;
+  }
+
+  if(DebugBacktrace) {
+    fprintf(stderr, "in getFrameId 0x%lx\n", ip);
+  }
+
+  CodeRecord* rec = currentRecords->find(ip);
+  gdb_frame_id ret;
+  if(rec) {
+    ret.code_address = rec->begin;
+    ret.stack_address = sp;
+  } else {
+    fprintf(stderr, "could'nt find frame for 0x%lx\n", ip);
+    ret.code_address = 0;
+    ret.stack_address = 0;
+  }
   return ret;
 }
 
@@ -83,6 +211,8 @@ gdb_frame_id getFrameId(gdb_reader_funcs *self,
 void destroyReader(gdb_reader_funcs *self) {
   // do nothing, self is statically allocated (below)
 }
+
+} // namespace
 
 static gdb_reader_funcs readerFuncs = {
   /*.reader_version =*/ GDB_READER_INTERFACE_VERSION,

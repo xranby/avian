@@ -16,7 +16,7 @@ class System;
 
 class CompilationHandler {
 public:
-  virtual void compiled(const void* code, unsigned size, const char* name) = 0;
+  virtual void compiled(const void* code, unsigned size, unsigned frameSize, const char* name) = 0;
 };
 
 CompilationHandler* makeGdbCompilationHandler(System* s);

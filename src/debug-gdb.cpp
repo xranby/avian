@@ -52,6 +52,7 @@ using namespace vm;
 struct SymbolFile {
   uint64_t start;
   uint64_t length;
+  uint64_t frameSize;
   char name[1];
 };
 
@@ -60,13 +61,14 @@ public:
   MyCompilationHandler(System* s):
     s(s) {}
 
-  virtual void compiled(const void* code, unsigned size, const char* name) {
+  virtual void compiled(const void* code, unsigned size, unsigned frameSize, const char* name) {
     // TODO: make thread-safe
 
     size_t namelen = strlen(name);
     SymbolFile* file = static_cast<SymbolFile*>(allocate(s, sizeof(SymbolFile) + namelen));
     file->start = reinterpret_cast<uint64_t>(code);
     file->length = file->start + size;
+    file->frameSize = frameSize;
     strcpy(file->name, name);
 
     jit_code_entry* entry = static_cast<jit_code_entry*>(allocate(s, sizeof(jit_code_entry)));

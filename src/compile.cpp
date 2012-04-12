@@ -5993,7 +5993,7 @@ compile(MyThread* t, Frame* initialFrame, unsigned ip,
 FILE* compileLog = 0;
 
 void
-logCompile(MyThread* t, const void* code, unsigned size, const char* class_,
+logCompile(MyThread* t, const void* code, unsigned size, unsigned frameSize, const char* class_,
            const char* name, const char* spec);
 
 int
@@ -6512,7 +6512,7 @@ simpleFrameMapTableSize(MyThread* t, object method, object map)
 
 uint8_t*
 finish(MyThread* t, FixedAllocator* allocator, Assembler* a, const char* name,
-       unsigned length)
+       unsigned length, unsigned frameSizeInWords)
 {
   uint8_t* start = static_cast<uint8_t*>
     (allocator->allocate(length, TargetBytesPerWord));
@@ -6520,7 +6520,7 @@ finish(MyThread* t, FixedAllocator* allocator, Assembler* a, const char* name,
   a->setDestination(start);
   a->write();
 
-  logCompile(t, start, length, 0, name, 0);
+  logCompile(t, start, length, frameSizeInWords * TargetBytesPerWord, 0, name, 0);
 
   return start;
 }
@@ -6794,7 +6794,7 @@ finish(MyThread* t, FixedAllocator* allocator, Context* context)
 
   if (false) {
     logCompile
-      (t, 0, 0,
+      (t, 0, 0, 0,
        reinterpret_cast<const char*>
        (&byteArrayBody(t, className(t, methodClass(t, context->method)), 0)),
        reinterpret_cast<const char*>
@@ -6950,6 +6950,7 @@ finish(MyThread* t, FixedAllocator* allocator, Context* context)
 
   logCompile
     (t, start, codeSize,
+     alignedFrameSize(t, context->method) * TargetBytesPerWord,
      reinterpret_cast<const char*>
      (&byteArrayBody(t, className(t, methodClass(t, context->method)), 0)),
      reinterpret_cast<const char*>
@@ -8864,7 +8865,7 @@ class MyProcessor: public Processor {
 };
 
 void
-logCompile(MyThread* t, const void* code, unsigned size, const char* class_,
+logCompile(MyThread* t, const void* code, unsigned size, unsigned frameSize, const char* class_,
            const char* name, const char* spec)
 {
   static bool open = false;
@@ -8896,7 +8897,7 @@ logCompile(MyThread* t, const void* code, unsigned size, const char* class_,
     }
     char* sym = (char*)malloc(strlen(class_) + strlen(name) + strlen(spec) + 2);
     sprintf(sym, "%s.%s%s", class_, name, spec);
-    handler->compiled(code, size, sym);
+    handler->compiled(code, size, frameSize, sym);
   }
 }
 
@@ -9301,6 +9302,7 @@ fixupMethods(Thread* t, object map, BootImage* image UNUSED, uint8_t* code)
                reinterpret_cast<uint8_t*>(methodCompiled(t, method)),
                reinterpret_cast<uintptr_t*>
                (methodCompiled(t, method))[-1],
+               0,
                reinterpret_cast<char*>
                (&byteArrayBody(t, className(t, methodClass(t, method)), 0)),
                reinterpret_cast<char*>
@@ -9525,7 +9527,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
     p->thunks.default_.length = a->endBlock(false)->resolve(0, 0);
 
     p->thunks.default_.start = finish
-      (t, allocator, a, "default", p->thunks.default_.length);
+      (t, allocator, a, "default", p->thunks.default_.length, t->arch->alignFrameSize(1));
   }
 
   { Context context(t);
@@ -9570,7 +9572,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
     p->thunks.defaultVirtual.length = a->endBlock(false)->resolve(0, 0);
 
     p->thunks.defaultVirtual.start = finish
-      (t, allocator, a, "defaultVirtual", p->thunks.defaultVirtual.length);
+      (t, allocator, a, "defaultVirtual", p->thunks.defaultVirtual.length, t->arch->alignFrameSize(1));
   }
 
   { Context context(t);
@@ -9602,7 +9604,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
     p->thunks.native.length = a->endBlock(false)->resolve(0, 0);
 
     p->thunks.native.start = finish
-      (t, allocator, a, "native", p->thunks.native.length);
+      (t, allocator, a, "native", p->thunks.native.length, t->arch->alignFrameSize(1));
   }
 
   { Context context(t);
@@ -9620,7 +9622,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
     p->thunks.aioob.length = a->endBlock(false)->resolve(0, 0);
 
     p->thunks.aioob.start = finish
-      (t, allocator, a, "aioob", p->thunks.aioob.length);
+      (t, allocator, a, "aioob", p->thunks.aioob.length, t->arch->alignFrameSize(1));
   }
 
   { Context context(t);
@@ -9638,7 +9640,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
     p->thunks.stackOverflow.length = a->endBlock(false)->resolve(0, 0);
 
     p->thunks.stackOverflow.start = finish
-      (t, allocator, a, "stackOverflow", p->thunks.stackOverflow.length);
+      (t, allocator, a, "stackOverflow", p->thunks.stackOverflow.length, t->arch->alignFrameSize(1));
   }
 
   { { Context context(t);
@@ -9675,7 +9677,7 @@ compileThunks(MyThread* t, FixedAllocator* allocator)
       a->setDestination(start);                                         \
       a->write();                                                       \
                                                                         \
-      logCompile(t, start, p->thunks.table.length, 0, #s, 0);           \
+      logCompile(t, start, p->thunks.table.length, 0, 0, #s, 0);        \
                                                                         \
       start += p->thunks.table.length;                                  \
     }
@@ -9779,7 +9781,7 @@ compileVirtualThunk(MyThread* t, unsigned index, unsigned* size)
   a->setDestination(start);
   a->write();
 
-  logCompile(t, start, *size, 0, "virtualThunk", 0);
+  logCompile(t, start, *size, 0, 0, "virtualThunk", 0);
 
   return reinterpret_cast<uintptr_t>(start);
 }
