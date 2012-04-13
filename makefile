@@ -44,6 +44,20 @@ ifeq ($(continuations),true)
 	options := $(options)-continuations
 endif
 
+enable-gdb-plugin = false
+
+ifeq ($(platform),linux)
+	ifeq ($(process),compile)
+		ifeq ($(arch),x86_64)
+			enable-gdb-plugin := true
+		endif
+	endif
+endif
+
+ifeq ($(enable-gdb-plugin),true)
+	gdb-plugin = $(build)/$(so-prefix)$(name)-gdb-plugin$(so-suffix)
+endif
+
 root := $(shell (cd .. && pwd))
 build = build/$(platform)-$(arch)$(options)
 classpath-build = $(build)/classpath
@@ -622,7 +636,6 @@ static-library = $(build)/lib$(name).a
 executable = $(build)/$(name)${exe-suffix}
 dynamic-library = $(build)/$(so-prefix)jvm$(so-suffix)
 executable-dynamic = $(build)/$(name)-dynamic${exe-suffix}
-gdb-plugin = $(build)/$(so-prefix)$(name)-gdb-plugin$(so-suffix)
 
 ifneq ($(classpath),avian)
 # Assembler, ConstantPool, and Stream are not technically needed for a
@@ -696,10 +709,8 @@ test-args = $(test-flags) $(input)
 
 .PHONY: build
 build: $(static-library) $(executable) $(dynamic-library) \
-	$(executable-dynamic) $(classpath-dep) $(test-dep) $(test-extra-dep)
-
-.PHONY: gdb-plugin
-gdb-plugin: $(gdb-plugin)
+	$(executable-dynamic) $(gdb-plugin) $(classpath-dep) \
+	$(test-dep) $(test-extra-dep)
 
 $(gdb-plugin): src/gdb-plugin.cpp
 	mkdir -p $(build)
