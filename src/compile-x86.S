@@ -19,6 +19,8 @@
 #  define GLOBAL(x) x   
 #endif
 
+#define UNWIND_MAGIC_VALUE 0x12ab34cd
+
 .text
 
 #ifdef __x86_64__
@@ -40,6 +42,11 @@
 GLOBAL(vmInvoke):
    pushq  %rbp
    movq   %rsp,%rbp
+
+#ifndef NDEBUG
+   // magic value that gdb unwinder plugin scans for
+   pushq $UNWIND_MAGIC_VALUE
+#endif
    
    // %rcx: thread
    // %rdx: function
@@ -126,10 +133,17 @@ GLOBAL(vmInvoke_safeStack):
    movq   48(%rsp),%rdi
 
    addq   $CALLEE_SAVED_REGISTER_FOOTPRINT,%rsp
+
+#ifndef NDEBUG
+   // pop magic value
+   addq $8, %rsp
+#endif
    
    // return
    popq   %rbp
    ret
+.globl GLOBAL(vmInvoke_end)
+GLOBAL(vmInvoke_end):
       
 .globl GLOBAL(vmJumpAndInvoke)
 GLOBAL(vmJumpAndInvoke):
@@ -185,6 +199,11 @@ LOCAL(vmJumpAndInvoke_argumentTest):
 GLOBAL(vmInvoke):
    pushq  %rbp
    movq   %rsp,%rbp
+
+#ifndef NDEBUG
+   // magic value that gdb unwinder plugin scans for
+   pushq $UNWIND_MAGIC_VALUE
+#endif
       
    // %rdi: thread
    // %rsi: function
@@ -269,10 +288,17 @@ LOCAL(vmInvoke_copy):
 LOCAL(vmInvoke_exit):
 
    addq   $CALLEE_SAVED_REGISTER_FOOTPRINT,%rsp
+
+#ifndef NDEBUG
+   // pop magic value
+   addq $8, %rsp
+#endif
    
    // return
    popq   %rbp
    ret
+.globl GLOBAL(vmInvoke_end)
+GLOBAL(vmInvoke_end):
    
 .globl GLOBAL(vmJumpAndInvoke)
 GLOBAL(vmJumpAndInvoke):
@@ -337,6 +363,11 @@ LOCAL(vmJumpAndInvoke_argumentTest):
 GLOBAL(vmInvoke):
    pushl  %ebp
    movl   %esp,%ebp
+
+#ifndef NDEBUG
+   // magic value that gdb unwinder plugin scans for
+   pushl $UNWIND_MAGIC_VALUE
+#endif
 
    //  8(%ebp): thread
    // 12(%ebp): function
@@ -409,8 +440,15 @@ GLOBAL(vmInvoke_safeStack):
    // handle return value based on expected type
    movl   28(%esp),%ecx
 
+#ifndef NDEBUG
+   // pop magic value
+   addl $4, %esp
+#endif
+
    popl   %ebp
    ret
+.globl GLOBAL(vmInvoke_end)
+GLOBAL(vmInvoke_end):
 
 LOCAL(getPC):
    movl   (%esp),%esi

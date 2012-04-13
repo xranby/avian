@@ -11,6 +11,14 @@
 #include "debug-gdb.h"
 #include "system.h"
 
+
+
+// The precise signature doesn't matter.  We only use these for reporting the extents of the function.
+extern "C" {
+  void vmInvoke();
+  void vmInvoke_end();
+}
+
 extern "C" {
   typedef enum
   {
@@ -59,7 +67,14 @@ struct SymbolFile {
 class MyCompilationHandler: public CompilationHandler {
 public:
   MyCompilationHandler(System* s):
-    s(s) {}
+    s(s)
+  {
+    compiled(reinterpret_cast<uint8_t*>(&vmInvoke),
+      reinterpret_cast<uint8_t*>(&vmInvoke_end)
+      - reinterpret_cast<uint8_t*>(&vmInvoke),
+      72,
+      "#vmInvoke");
+  }
 
   virtual void compiled(const void* code, unsigned size, unsigned frameSize, const char* name) {
     // TODO: make thread-safe

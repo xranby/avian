@@ -17,6 +17,8 @@ extern "C" {
 
 #include "common.h"
 
+const uint64_t UnwindMagicValue = 0x12ab34cd;
+
 namespace {
 
 const bool DebugBacktrace = false;
@@ -29,6 +31,7 @@ public:
   uint64_t frameSize;
   const char* name;
 
+  // TODO: use something better than linear search
   CodeRecord* find(uint64_t ip) {
     CodeRecord* rec = this;
     while(rec && !(rec->begin <= ip && rec->end > ip)) {
@@ -66,15 +69,18 @@ gdb_status readDbgInfo(gdb_reader_funcs *self,
 
   // TODO: convert endian-ness, if necessary
 
-  gdb_object* obj = cb->object_open(cb);
+  if(name[0] != '#') {
 
-  // TODO: get real file info
-  gdb_symtab* symtab = cb->symtab_open(cb, obj, "<generated_code>");
+    gdb_object* obj = cb->object_open(cb);
 
-  gdb_block* block = cb->block_open(cb, symtab, 0, start, length, name);
+    // TODO: get real file info
+    gdb_symtab* symtab = cb->symtab_open(cb, obj, "<generated_code>");
 
-  cb->symtab_close(cb, symtab);
-  cb->object_close(cb, obj);
+    gdb_block* block = cb->block_open(cb, symtab, 0, start, length, name);
+
+    cb->symtab_close(cb, symtab);
+    cb->object_close(cb, obj);
+  }
 
   CodeRecord* rec = new CodeRecord();
   rec->next = currentRecords;
@@ -119,6 +125,7 @@ void writeRegister(gdb_unwind_callbacks* cb, int dwarfRegister, uint64_t value, 
 }
 
 bool readMemory(gdb_unwind_callbacks* cb, uint64_t addr, uint64_t& value, int size) {
+  value = 0;
   return cb->target_read(addr, &value, size) == GDB_SUCCESS;
 }
 
@@ -146,28 +153,59 @@ gdb_status unwindStack(gdb_reader_funcs *self,
 
   if(CodeRecord* rec = currentRecords->find(ip)) {
     if(DebugBacktrace) {
-      fprintf(stderr, "sp: 0x%lx, ip: 0x%lx framesize: %ld\n", sp, ip, rec->frameSize);
+      fprintf(stderr, "sp: 0x%lx, ip: 0x%lx framesize: %ld %s\n", sp, ip, rec->frameSize, rec->name);
     }
-    uint64_t bp = sp + rec->frameSize;
+    if(rec->name[0] == '#') {
+      if(DebugBacktrace) {
+        fprintf(stderr, "built-in assembly routine %s\n", rec->name + 1);
+      }
 
-    uint64_t at_bp;
-    uint64_t at_bpm1;
-    uint64_t at_bpp1;
+      const int MaxWordsToSearch = 200;
 
-    if(!readMemory(cb, bp, at_bp, 8) || !readMemory(cb, bp-8, at_bpm1, 8) || !readMemory(cb, bp+8, at_bpp1, 8)) {
+      for(int i = 0; i < MaxWordsToSearch; i++) {
+        uint64_t value;
+        uint64_t addr = sp + i * 8;
+
+        if(!readMemory(cb, addr, value, 8)) {
+          return GDB_FAIL;
+        }
+        if(value == UnwindMagicValue) {
+          uint64_t oldBp;
+          uint64_t oldIp;
+
+          if(!readMemory(cb, addr + 8, oldBp, 8) || !readMemory(cb, addr + 16, oldIp, 8)) {
+            return GDB_FAIL;
+          }
+
+          writeRegister(cb, RIP, oldIp, 8);
+          writeRegister(cb, RSP, addr, 8);
+          writeRegister(cb, RBP, oldBp, 8);
+
+          return GDB_SUCCESS;
+        }
+      }
       return GDB_FAIL;
-    }
-    if(DebugBacktrace) {
-      fprintf(stderr, "bp: 0x%lx\n", bp);
-      fprintf(stderr, "at_bpm1: 0x%lx\n", at_bpm1);
-      fprintf(stderr, "at_bp: 0x%lx\n", at_bp);
-      fprintf(stderr, "at_bpp1: 0x%lx\n", at_bpp1);
-    }
+    } else {
+      uint64_t bp = sp + rec->frameSize;
 
-    writeRegister(cb, RIP, at_bp, 8);
-    writeRegister(cb, RSP, bp + 8, 8);
+      uint64_t at_bp;
+      uint64_t at_bpm1;
+      uint64_t at_bpp1;
 
-    return GDB_SUCCESS;
+      if(!readMemory(cb, bp, at_bp, 8) || !readMemory(cb, bp-8, at_bpm1, 8) || !readMemory(cb, bp+8, at_bpp1, 8)) {
+        return GDB_FAIL;
+      }
+      if(DebugBacktrace) {
+        fprintf(stderr, "bp: 0x%lx\n", bp);
+        fprintf(stderr, "at_bpm1: 0x%lx\n", at_bpm1);
+        fprintf(stderr, "at_bp: 0x%lx\n", at_bp);
+        fprintf(stderr, "at_bpp1: 0x%lx\n", at_bpp1);
+      }
+
+      writeRegister(cb, RIP, at_bp, 8);
+      writeRegister(cb, RSP, bp + 8, 8);
+      return GDB_SUCCESS;
+    }
   } else {
     return GDB_FAIL;
   }
