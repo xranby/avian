@@ -54,6 +54,12 @@ const bool Continuations = true;
 const bool Continuations = false;
 #endif
 
+#ifdef AVIAN_GDB_PLUGIN
+const bool GdbPlugin = true;
+#else
+const bool GdbPlugin = false;
+#endif
+
 const unsigned MaxNativeCallFootprint = TargetBytesPerWord == 8 ? 4 : 5;
 
 const unsigned InitialZoneCapacityInBytes = 64 * 1024;
@@ -8297,7 +8303,7 @@ class MyProcessor: public Processor {
     codeAllocator(s, 0, 0),
     callTableSize(0),
     useNativeFeatures(useNativeFeatures),
-    compilationHandler(makeGdbCompilationHandler(s))
+    compilationHandler(GdbPlugin ? makeGdbCompilationHandler(s) : 0)
   {
     thunkTable[compileMethodIndex] = voidPointer(local::compileMethod);
     thunkTable[compileVirtualMethodIndex] = voidPointer(compileVirtualMethod);
@@ -8898,6 +8904,7 @@ logCompile(MyThread* t, const void* code, unsigned size, unsigned frameSize, con
     char* sym = (char*)malloc(strlen(class_) + strlen(name) + strlen(spec) + 2);
     sprintf(sym, "%s.%s%s", class_, name, spec);
     handler->compiled(code, size, frameSize, sym);
+    free(sym);
   }
 }
 

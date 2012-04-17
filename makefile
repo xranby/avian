@@ -541,8 +541,7 @@ vm-sources = \
 	$(src)/classpath-$(classpath).cpp \
 	$(src)/builtin.cpp \
 	$(src)/jnienv.cpp \
-	$(src)/process.cpp \
-	$(src)/debug-gdb.cpp
+	$(src)/process.cpp
 
 vm-asm-sources = $(src)/$(asm).S
 
@@ -554,6 +553,10 @@ ifeq ($(process),compile)
 		$(src)/$(target-asm).cpp
 
 	vm-asm-sources += $(src)/compile-$(asm).S
+endif
+
+ifeq ($(enable-gdb-plugin),true)
+	vm-sources += $(src)/debug-gdb.cpp
 endif
 
 vm-cpp-objects = $(call cpp-objects,$(vm-sources),$(src),$(build))
@@ -577,6 +580,10 @@ endif
 ifeq ($(continuations),true)
 	cflags += -DAVIAN_CONTINUATIONS
 	asmflags += -DAVIAN_CONTINUATIONS
+endif
+
+ifeq ($(enable-gdb-plugin),true)
+	cflags += -DAVIAN_GDB_PLUGIN
 endif
 
 bootimage-generator-sources = $(src)/bootimage.cpp 
