@@ -52,11 +52,11 @@ CodeRecord* currentRecords = 0;
 
    Return GDB_FAIL on failure and GDB_SUCCESS on success.  */
 
-gdb_status readDbgInfo(gdb_reader_funcs *self,
+gdb_status readDbgInfo(gdb_reader_funcs *,
                        gdb_symbol_callbacks *cb,
                        void *memory, long memory_sz)
 {
-  if(memory_sz < 3 * sizeof(uint64_t) + 1) {
+  if((unsigned long)memory_sz < 3 * sizeof(uint64_t) + 1) {
     fprintf(stderr, "Avian JIT reader: expected debug info of\n\tstruct{uint64_t begin, uint64_t end, char[] name};\n\tbut found size %ld\n", memory_sz);
     return GDB_FAIL;
   }
@@ -76,7 +76,7 @@ gdb_status readDbgInfo(gdb_reader_funcs *self,
     // TODO: get real file info
     gdb_symtab* symtab = cb->symtab_open(cb, obj, "<generated_code>");
 
-    gdb_block* block = cb->block_open(cb, symtab, 0, start, length, name);
+    cb->block_open(cb, symtab, 0, start, length, name);
 
     cb->symtab_close(cb, symtab);
     cb->object_close(cb, obj);
@@ -134,7 +134,7 @@ bool readMemory(gdb_unwind_callbacks* cb, uint64_t addr, uint64_t& value, int si
 
    Return GDB_FAIL on failure and GDB_SUCCESS on success.  */
 
-gdb_status unwindStack(gdb_reader_funcs *self,
+gdb_status unwindStack(gdb_reader_funcs *,
                        gdb_unwind_callbacks *cb)
 {
   uint64_t ip;
@@ -215,7 +215,7 @@ gdb_status unwindStack(gdb_reader_funcs *self,
    read the current register values.  See the comment on struct
    gdb_frame_id.  */
 
-gdb_frame_id getFrameId(gdb_reader_funcs *self,
+gdb_frame_id getFrameId(gdb_reader_funcs *,
                          gdb_unwind_callbacks *cb)
 {
   uint64_t ip;
@@ -246,7 +246,7 @@ gdb_frame_id getFrameId(gdb_reader_funcs *self,
 /* Called when a reader is being unloaded.  This function should also
    free SELF, if required.  */
 
-void destroyReader(gdb_reader_funcs *self) {
+void destroyReader(gdb_reader_funcs *) {
   // do nothing, self is statically allocated (below)
 }
 
