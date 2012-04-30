@@ -78,6 +78,13 @@ gdb_status readDbgInfo(gdb_reader_funcs *,
 
     cb->block_open(cb, symtab, 0, start, length, name);
 
+    gdb_line_mapping myLines[] = {
+      {1, start},
+      {2, start + length}
+    };
+
+    cb->line_mapping_add(cb, symtab, 2, myLines);
+
     cb->symtab_close(cb, symtab);
     cb->object_close(cb, obj);
   }
