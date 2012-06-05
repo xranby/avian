@@ -252,7 +252,8 @@ NewString(Thread* t, const jchar* chars, jsize size)
 {
   if (chars == 0) return 0;
 
-  uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(chars), size };
+  uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(chars),
+                            static_cast<uintptr_t>(size) };
 
   return reinterpret_cast<jstring>(run(t, newString, arguments));
 }
@@ -311,7 +312,7 @@ DefineClass(Thread* t, const char*, jobject loader, const jbyte* buffer,
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(loader),
                             reinterpret_cast<uintptr_t>(buffer),
-                            length };
+                            static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jclass>(run(t, defineClass, arguments));
 }
@@ -1495,7 +1496,7 @@ SetByteField(Thread* t, jobject o, jfieldID field, jbyte v)
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(o),
                             field,
-                            v };
+                            static_cast<uintptr_t>(v) };
 
   run(t, setByteField, arguments);
 }
@@ -1545,7 +1546,7 @@ SetShortField(Thread* t, jobject o, jfieldID field, jshort v)
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(o),
                             field,
-                            v };
+                            static_cast<uintptr_t>(v) };
 
   run(t, setShortField, arguments);
 }
@@ -1570,7 +1571,7 @@ SetIntField(Thread* t, jobject o, jfieldID field, jint v)
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(o),
                             field,
-                            v };
+                            static_cast<uintptr_t>(v) };
 
   run(t, setIntField, arguments);
 }
@@ -1975,7 +1976,7 @@ SetStaticByteField(Thread* t, jobject c, jfieldID field, jbyte v)
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(c),
                             field,
-                            v };
+                            static_cast<uintptr_t>(v) };
 
   run(t, setStaticByteField, arguments);
 }
@@ -2033,7 +2034,7 @@ SetStaticShortField(Thread* t, jobject c, jfieldID field, jshort v)
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(c),
                             field,
-                            v };
+                            static_cast<uintptr_t>(v) };
 
   run(t, setStaticShortField, arguments);
 }
@@ -2062,7 +2063,7 @@ SetStaticIntField(Thread* t, jobject c, jfieldID field, jint v)
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(c),
                             field,
-                            v };
+                            static_cast<uintptr_t>(v) };
 
   run(t, setStaticIntField, arguments);
 }
@@ -2157,7 +2158,7 @@ SetStaticDoubleField(Thread* t, jobject c, jfieldID field, jdouble v)
 }
 
 jobject JNICALL
-NewGlobalRef(Thread* t, jobject o)
+newGlobalRef(Thread* t, jobject o, bool weak)
 {
   ENTER(t, Thread::ActiveState);
 
@@ -2165,7 +2166,7 @@ NewGlobalRef(Thread* t, jobject o)
   
   if (o) {
     for (Reference* r = t->m->jniReferences; r; r = r->next) {
-      if (r->target == *o) {
+      if (r->target == *o and r->weak == weak) {
         acquire(t, r);
 
         return &(r->target);
@@ -2173,7 +2174,7 @@ NewGlobalRef(Thread* t, jobject o)
     }
 
     Reference* r = new (t->m->heap->allocate(sizeof(Reference)))
-      Reference(*o, &(t->m->jniReferences));
+      Reference(*o, &(t->m->jniReferences), weak);
 
     acquire(t, r);
 
@@ -2181,6 +2182,12 @@ NewGlobalRef(Thread* t, jobject o)
   } else {
     return 0;
   }
+}
+
+jobject JNICALL
+NewGlobalRef(Thread* t, jobject o)
+{
+  return newGlobalRef(t, o, false);
 }
 
 void JNICALL
@@ -2193,6 +2200,18 @@ DeleteGlobalRef(Thread* t, jobject r)
   if (r) {
     release(t, reinterpret_cast<Reference*>(r));
   }
+}
+
+jobject JNICALL
+NewWeakGlobalRef(Thread* t, jobject o)
+{
+  return newGlobalRef(t, o, true);
+}
+
+void JNICALL
+DeleteWeakGlobalRef(Thread* t, jobject r)
+{
+  DeleteGlobalRef(t, r);
 }
 
 jint JNICALL
@@ -2243,7 +2262,7 @@ newObjectArray(Thread* t, uintptr_t* arguments)
 jobjectArray JNICALL
 NewObjectArray(Thread* t, jsize length, jclass class_, jobject init)
 {
-  uintptr_t arguments[] = { length,
+  uintptr_t arguments[] = { static_cast<uintptr_t>(length),
                             reinterpret_cast<uintptr_t>(class_),
                             reinterpret_cast<uintptr_t>(init) };
 
@@ -2284,7 +2303,7 @@ NewBooleanArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeBooleanArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jbooleanArray>(run(t, newArray, arguments));
 }
@@ -2300,7 +2319,7 @@ NewByteArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeByteArray0)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jbyteArray>(run(t, newArray, arguments));
 }
@@ -2310,7 +2329,7 @@ NewCharArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeCharArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jcharArray>(run(t, newArray, arguments));
 }
@@ -2320,7 +2339,7 @@ NewShortArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeShortArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jshortArray>(run(t, newArray, arguments));
 }
@@ -2330,7 +2349,7 @@ NewIntArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeIntArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jintArray>(run(t, newArray, arguments));
 }
@@ -2340,7 +2359,7 @@ NewLongArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeLongArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jlongArray>(run(t, newArray, arguments));
 }
@@ -2350,7 +2369,7 @@ NewFloatArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeFloatArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jfloatArray>(run(t, newArray, arguments));
 }
@@ -2360,7 +2379,7 @@ NewDoubleArray(Thread* t, jsize length)
 {
   uintptr_t arguments[]
     = { reinterpret_cast<uintptr_t>(voidPointer(makeDoubleArray)),
-        length };
+        static_cast<uintptr_t>(length) };
 
   return reinterpret_cast<jdoubleArray>(run(t, newArray, arguments));
 }
@@ -2887,7 +2906,7 @@ RegisterNatives(Thread* t, jclass c, const JNINativeMethod* methods,
 {
   uintptr_t arguments[] = { reinterpret_cast<uintptr_t>(c),
                             reinterpret_cast<uintptr_t>(methods),
-                            methodCount };
+                            static_cast<uintptr_t>(methodCount) };
 
   return run(t, registerNatives, arguments) ? 0 : -1;
 }
@@ -3166,8 +3185,9 @@ populateJNITables(JavaVMVTable* vmTable, JNIEnvVTable* envTable)
   envTable->SetStaticFloatField = local::SetStaticFloatField;
   envTable->SetStaticDoubleField = local::SetStaticDoubleField;
   envTable->NewGlobalRef = local::NewGlobalRef;
-  envTable->NewWeakGlobalRef = local::NewGlobalRef;
+  envTable->NewWeakGlobalRef = local::NewWeakGlobalRef;
   envTable->DeleteGlobalRef = local::DeleteGlobalRef;
+  envTable->DeleteWeakGlobalRef = local::DeleteWeakGlobalRef;
   envTable->EnsureLocalCapacity = local::EnsureLocalCapacity;
   envTable->ExceptionOccurred = local::ExceptionOccurred;
   envTable->ExceptionDescribe = local::ExceptionDescribe;
@@ -3250,6 +3270,7 @@ JNI_CreateJavaVM(Machine** m, Thread** t, void* args)
   local::JavaVMInitArgs* a = static_cast<local::JavaVMInitArgs*>(args);
 
   unsigned heapLimit = 0;
+  unsigned stackLimit = 0;
   const char* bootLibrary = 0;
   const char* classpath = 0;
   const char* javaHome = AVIAN_JAVA_HOME;
@@ -3266,6 +3287,8 @@ JNI_CreateJavaVM(Machine** m, Thread** t, void* args)
       const char* p = a->options[i].optionString + 2;
       if (strncmp(p, "mx", 2) == 0) {
         heapLimit = local::parseSize(p + 2);
+      } else if (strncmp(p, "ss", 2) == 0) {
+        stackLimit = local::parseSize(p + 2);
       } else if (strncmp(p, BOOTCLASSPATH_PREPEND_OPTION ":",
                          sizeof(BOOTCLASSPATH_PREPEND_OPTION)) == 0)
       {
@@ -3308,6 +3331,8 @@ JNI_CreateJavaVM(Machine** m, Thread** t, void* args)
   }
 
   if (heapLimit == 0) heapLimit = 128 * 1024 * 1024;
+
+  if (stackLimit == 0) stackLimit = 128 * 1024;
   
   if (classpath == 0) classpath = ".";
   
@@ -3358,9 +3383,9 @@ JNI_CreateJavaVM(Machine** m, Thread** t, void* args)
     *(argumentPointer++) = a->options[i].optionString;
   }
 
-  *m = new (h->allocate(sizeof(Machine)))
-    Machine
-    (s, h, bf, af, p, c, properties, propertyCount, arguments, a->nOptions);
+  *m = new (h->allocate(sizeof(Machine))) Machine
+    (s, h, bf, af, p, c, properties, propertyCount, arguments, a->nOptions,
+     stackLimit);
 
   *t = p->makeThread(*m, 0, 0);
 

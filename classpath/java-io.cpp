@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2011, Avian Contributors
+/* Copyright (c) 2008-2012, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -48,7 +48,6 @@
 #    define R_OK 4
 #  else
 #    define OPEN _wopen
-#    define CREAT _wcreat
 #  endif
 
 #  define GET_CHARS GetStringChars
@@ -71,7 +70,6 @@ typedef wchar_t char_t;
 #  define STRUCT_STAT struct stat
 #  define MKDIR mkdir
 #  define CHMOD chmod
-#  define CREAT creat
 #  define UNLINK unlink
 #  define RENAME rename
 #  define OPEN_MASK 0
@@ -101,12 +99,6 @@ OPEN(string_t path, int mask, int mode)
   } else {
     return -1; 
   }
-}
-
-inline int
-CREAT(string_t path, int mode)
-{
-  return OPEN(path, _O_CREAT, mode);
 }
 #endif
 
@@ -184,7 +176,8 @@ inline Mapping*
 map(JNIEnv* e, string_t path)
 {
   Mapping* result = 0;
-  HANDLE file = CreateFileW(path, FILE_READ_DATA, FILE_SHARE_READ, 0,
+  HANDLE file = CreateFileW(path, FILE_READ_DATA,
+                            FILE_SHARE_READ | FILE_SHARE_WRITE, 0,
                             OPEN_EXISTING, 0, 0);
   if (file != INVALID_HANDLE_VALUE) {
     unsigned size = GetFileSize(file, 0);
@@ -323,7 +316,19 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_java_io_File_toAbsolutePath(JNIEnv* e UNUSED, jclass, jstring path)
 {
 #ifdef PLATFORM_WINDOWS
-  // todo
+  string_t chars = getChars(e, path);
+  if (chars) {
+    const unsigned BufferSize = MAX_PATH;
+    char_t buffer[BufferSize];
+    DWORD success = GetFullPathNameW(chars, BufferSize, buffer, 0);
+    releaseChars(e, path, chars);
+
+    if (success) {
+      return e->NewString
+        (reinterpret_cast<const jchar*>(buffer), wcslen(buffer));
+    }
+  }
+
   return path;
 #else
   jstring result = path;
@@ -394,21 +399,26 @@ Java_java_io_File_mkdir(JNIEnv* e, jclass, jstring path)
   }
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_java_io_File_createNewFile(JNIEnv* e, jclass, jstring path)
 {
+  bool result = false;
   string_t chars = getChars(e, path);
   if (chars) {
     if (not exists(chars)) {
-      int fd = CREAT(chars, 0600);
+      int fd = OPEN(chars, O_CREAT | O_WRONLY | O_EXCL, 0600);
       if (fd == -1) {
-        throwNewErrno(e, "java/io/IOException");
+        if (errno != EEXIST) {
+          throwNewErrno(e, "java/io/IOException");
+        }
       } else {
+        result = true;
         doClose(e, fd);
       }
     }
     releaseChars(e, path, chars);
   }
+  return result;
 }
 
 extern "C" JNIEXPORT void JNICALL
