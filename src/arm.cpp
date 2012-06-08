@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Avian Contributors
+/* Copyright (c) 2010-2012, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -136,6 +136,7 @@ inline int ble(int offset) { return SETCOND(b(offset), LE); }
 inline int bge(int offset) { return SETCOND(b(offset), GE); }
 inline int blo(int offset) { return SETCOND(b(offset), CC); }
 inline int bhs(int offset) { return SETCOND(b(offset), CS); }
+inline int bkpt() { return 0xe1200070; } // todo: macro-ify
 }
 
 const uint64_t MASK_LO32 = 0xffffffff;
@@ -227,7 +228,7 @@ class Context {
  public:
   Context(System* s, Allocator* a, Zone* zone):
     s(s), zone(zone), client(0), code(s, a, 1024), tasks(0), result(0),
-    firstBlock(new (zone->allocate(sizeof(MyBlock))) MyBlock(this, 0)),
+    firstBlock(new(zone) MyBlock(this, 0)),
     lastBlock(firstBlock), poolOffsetHead(0), poolOffsetTail(0),
     constantPool(0), constantPoolCount(0)
   { }
@@ -345,8 +346,7 @@ class Offset: public Promise {
 Promise*
 offset(Context* c, bool forTrace = false)
 {
-  return new (c->zone->allocate(sizeof(Offset)))
-    Offset(c, c->lastBlock, c->code.length(), forTrace);
+  return new(c->zone) Offset(c, c->lastBlock, c->code.length(), forTrace);
 }
 
 bool
@@ -413,8 +413,7 @@ class OffsetTask: public Task {
 void
 appendOffsetTask(Context* c, Promise* promise, Promise* instructionOffset)
 {
-  c->tasks = new (c->zone->allocate(sizeof(OffsetTask))) OffsetTask
-    (c->tasks, promise, instructionOffset);
+  c->tasks = new(c->zone) OffsetTask(c->tasks, promise, instructionOffset);
 }
 
 inline unsigned
@@ -627,17 +626,14 @@ appendConstantPoolEntry(Context* c, Promise* constant, Promise* callOffset)
   if (constant->resolved()) {
     // make a copy, since the original might be allocated on the
     // stack, and we need our copy to live until assembly is complete
-    constant = new (c->zone->allocate(sizeof(ResolvedPromise)))
-      ResolvedPromise(constant->value());
+    constant = new(c->zone) ResolvedPromise(constant->value());
   }
 
-  c->constantPool = new (c->zone->allocate(sizeof(ConstantPoolEntry)))
-    ConstantPoolEntry(c, constant, c->constantPool, callOffset);
+  c->constantPool = new(c->zone) ConstantPoolEntry(c, constant, c->constantPool, callOffset);
 
   ++ c->constantPoolCount;
 
-  PoolOffset* o = new (c->zone->allocate(sizeof(PoolOffset))) PoolOffset
-    (c->lastBlock, c->constantPool, c->code.length() - c->lastBlock->offset);
+  PoolOffset* o = new(c->zone) PoolOffset(c->lastBlock, c->constantPool, c->code.length() - c->lastBlock->offset);
 
   if (DebugPool) {
     fprintf(stderr, "add pool offset %p %d to block %p\n",
@@ -656,8 +652,7 @@ void
 appendPoolEvent(Context* c, MyBlock* b, unsigned offset, PoolOffset* head,
                 PoolOffset* tail)
 {
-  PoolEvent* e = new (c->zone->allocate(sizeof(PoolEvent))) PoolEvent
-    (head, tail, offset);
+  PoolEvent* e = new(c->zone) PoolEvent(head, tail, offset);
 
   if (b->poolEventTail) {
     b->poolEventTail->next = e;
@@ -1521,8 +1516,7 @@ branchCM(Context* c, TernaryOperation op, unsigned size,
 ShiftMaskPromise*
 shiftMaskPromise(Context* c, Promise* base, unsigned shift, int64_t mask)
 {
-  return new (c->zone->allocate(sizeof(ShiftMaskPromise)))
-    ShiftMaskPromise(base, shift, mask);
+  return new(c->zone) ShiftMaskPromise(base, shift, mask);
 }
 
 void
@@ -1617,6 +1611,12 @@ return_(Context* c)
 }
 
 void
+trap(Context* c)
+{
+  emit(c, bkpt());
+}
+
+void
 memoryBarrier(Context*) {}
 
 // END OPERATION COMPILERS
@@ -1629,7 +1629,7 @@ argumentFootprint(unsigned footprint)
 
 void
 nextFrame(ArchitectureContext* c, uint32_t* start, unsigned size UNUSED,
-          unsigned footprint, void* link, void*,
+          unsigned footprint, void* link, bool,
           unsigned targetParameterFootprint UNUSED, void** ip, void** stack)
 {
   assert(c, *ip >= start);
@@ -1703,6 +1703,7 @@ populateTables(ArchitectureContext* c)
   zo[LoadBarrier] = memoryBarrier;
   zo[StoreStoreBarrier] = memoryBarrier;
   zo[StoreLoadBarrier] = memoryBarrier;
+  zo[Trap] = trap;
 
   uo[index(c, LongCall, C)] = CAST1(longCallC);
 
@@ -1926,12 +1927,12 @@ class MyArchitecture: public Assembler::Architecture {
   }
 
   virtual void nextFrame(void* start, unsigned size, unsigned footprint,
-                         void* link, void* stackLimit,
+                         void* link, bool mostRecent,
                          unsigned targetParameterFootprint, void** ip,
                          void** stack)
   {
     ::nextFrame(&c, static_cast<uint32_t*>(start), size, footprint, link,
-                stackLimit, targetParameterFootprint, ip, stack);
+                mostRecent, targetParameterFootprint, ip, stack);
   }
 
   virtual void* frameIp(void* stack) {
@@ -2154,9 +2155,7 @@ class MyAssembler: public Assembler {
   {
     Register stack(StackRegister);
     Memory stackLimit(ThreadRegister, stackLimitOffsetFromThread);
-    Constant handlerConstant
-      (new (c.zone->allocate(sizeof(ResolvedPromise)))
-       ResolvedPromise(handler));
+    Constant handlerConstant(new(c.zone) ResolvedPromise(handler));
     branchRM(&c, JumpIfGreaterOrEqual, TargetBytesPerWord, &stack, &stackLimit,
              &handlerConstant);
   }
@@ -2472,8 +2471,7 @@ class MyAssembler: public Assembler {
     MyBlock* b = c.lastBlock;
     b->size = c.code.length() - b->offset;
     if (startNew) {
-      c.lastBlock = new (c.zone->allocate(sizeof(MyBlock)))
-        MyBlock(&c, c.code.length());
+      c.lastBlock = new (c.zone) MyBlock(&c, c.code.length());
     } else {
       c.lastBlock = 0;
     }
@@ -2544,8 +2542,7 @@ Assembler*
 makeAssembler(System* system, Allocator* allocator, Zone* zone,
               Assembler::Architecture* architecture)
 {
-  return new (zone->allocate(sizeof(MyAssembler)))
-    MyAssembler(system, allocator, zone,
+  return new(zone) MyAssembler(system, allocator, zone,
                 static_cast<MyArchitecture*>(architecture));
 }
 

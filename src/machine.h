@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2011, Avian Contributors
+/* Copyright (c) 2008-2012, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -111,9 +111,6 @@ const unsigned ThreadHeapSizeInWords = ThreadHeapSizeInBytes / BytesPerWord;
 const unsigned ThreadBackupHeapSizeInBytes = 2 * 1024;
 const unsigned ThreadBackupHeapSizeInWords
 = ThreadBackupHeapSizeInBytes / BytesPerWord;
-
-const unsigned StackSizeInBytes = 128 * 1024;
-const unsigned StackSizeInWords = StackSizeInBytes / BytesPerWord;
 
 const unsigned ThreadHeapPoolSize = 64;
 
@@ -1215,11 +1212,12 @@ noop();
 
 class Reference {
  public:
-  Reference(object target, Reference** handle):
+  Reference(object target, Reference** handle, bool weak):
     target(target),
     next(*handle),
     handle(handle),
-    count(0)
+    count(0),
+    weak(weak)
   {
     if (next) {
       next->handle = &next;
@@ -1231,6 +1229,7 @@ class Reference {
   Reference* next;
   Reference** handle;
   unsigned count;
+  bool weak;
 };
 
 class Classpath;
@@ -1279,7 +1278,7 @@ class Machine {
   Machine(System* system, Heap* heap, Finder* bootFinder, Finder* appFinder,
           Processor* processor, Classpath* classpath, const char** properties,
           unsigned propertyCount, const char** arguments,
-          unsigned argumentCount);
+          unsigned argumentCount, unsigned stackSizeInBytes);
 
   ~Machine() { 
     dispose();
@@ -1308,6 +1307,7 @@ class Machine {
   unsigned liveCount;
   unsigned daemonCount;
   unsigned fixedFootprint;
+  unsigned stackSizeInBytes;
   System::Local* localThread;
   System::Monitor* stateLock;
   System::Monitor* heapLock;
@@ -1316,6 +1316,7 @@ class Machine {
   System::Monitor* shutdownLock;
   System::Library* libraries;
   FILE* errorLog;
+  BootImage* bootimage;
   object types;
   object roots;
   object finalizers;
@@ -1332,6 +1333,7 @@ class Machine {
   JNIEnvVTable jniEnvVTable;
   uintptr_t* heapPool[ThreadHeapPoolSize];
   unsigned heapPoolIndex;
+  unsigned bootimageSize;
 };
 
 void
@@ -1578,6 +1580,9 @@ class Classpath {
   makeThread(Thread* t, Thread* parent) = 0;
 
   virtual void
+  clearInterrupted(Thread* t) = 0;
+
+  virtual void
   runThread(Thread* t) = 0;
 
   virtual void
@@ -1635,6 +1640,12 @@ inline object
 objectClass(Thread*, object o)
 {
   return mask(cast<object>(o, 0));
+}
+
+inline unsigned
+stackSizeInWords(Thread* t)
+{
+  return t->m->stackSizeInBytes / BytesPerWord;
 }
 
 void
@@ -2164,6 +2175,8 @@ hashTaken(Thread*, object o)
 inline unsigned
 baseSize(Thread* t, object o, object class_)
 {
+  assert(t, classFixedSize(t, class_) >= BytesPerWord);
+
   return ceiling(classFixedSize(t, class_), BytesPerWord)
     + ceiling(classArrayElementSize(t, class_)
               * cast<uintptr_t>(o, classFixedSize(t, class_) - BytesPerWord),
@@ -2212,7 +2225,7 @@ make(Thread* t, object class_)
 }
 
 object
-makeByteArray(Thread* t, const char* format, va_list a);
+makeByteArrayV(Thread* t, const char* format, va_list a, int size);
 
 object
 makeByteArray(Thread* t, const char* format, ...);
@@ -2587,16 +2600,7 @@ makeObjectArray(Thread* t, unsigned count)
 }
 
 object
-findInTable(Thread* t, object table, object name, object spec,
-            object& (*getName)(Thread*, object),
-            object& (*getSpec)(Thread*, object));
-
-inline object
-findFieldInClass(Thread* t, object class_, object name, object spec)
-{
-  return findInTable
-    (t, classFieldTable(t, class_), name, spec, fieldName, fieldSpec);
-}
+findFieldInClass(Thread* t, object class_, object name, object spec);
 
 inline object
 findFieldInClass2(Thread* t, object class_, const char* name, const char* spec)
@@ -2608,12 +2612,8 @@ findFieldInClass2(Thread* t, object class_, const char* name, const char* spec)
   return findFieldInClass(t, class_, n, s);
 }
 
-inline object
-findMethodInClass(Thread* t, object class_, object name, object spec)
-{
-  return findInTable
-    (t, classMethodTable(t, class_), name, spec, methodName, methodSpec);
-}
+object
+findMethodInClass(Thread* t, object class_, object name, object spec);
 
 inline object
 makeThrowable
@@ -2638,25 +2638,37 @@ makeThrowable
 }
 
 inline object
-makeThrowable(Thread* t, Machine::Type type, const char* format, va_list a)
+makeThrowableV(Thread* t, Machine::Type type, const char* format, va_list a,
+               int size)
 {
-  object s = makeByteArray(t, format, a);
+  object s = makeByteArrayV(t, format, a, size);
 
-  object message = t->m->classpath->makeString
-    (t, s, 0, byteArrayLength(t, s) - 1);
+  if (s) {
+    object message = t->m->classpath->makeString
+      (t, s, 0, byteArrayLength(t, s) - 1);
 
-  return makeThrowable(t, type, message);
+    return makeThrowable(t, type, message);
+  } else {
+    return 0;
+  }
 }
 
 inline object
 makeThrowable(Thread* t, Machine::Type type, const char* format, ...)
 {
-  va_list a;
-  va_start(a, format);
-  object r = makeThrowable(t, type, format, a);
-  va_end(a);
+  int size = 256;
+  while (true) {
+    va_list a;
+    va_start(a, format);
+    object r = makeThrowableV(t, type, format, a, size);
+    va_end(a);
 
-  return r;
+    if (r) {
+      return r;
+    } else {
+      size *= 2;
+    }
+  }
 }
 
 void
@@ -2692,12 +2704,19 @@ throwNew
 inline void NO_RETURN
 throwNew(Thread* t, Machine::Type type, const char* format, ...)
 {
-  va_list a;
-  va_start(a, format);
-  object r = makeThrowable(t, type, format, a);
-  va_end(a);
+  int size = 256;
+  while (true) {
+    va_list a;
+    va_start(a, format);
+    object r = makeThrowableV(t, type, format, a, size);
+    va_end(a);
 
-  throw_(t, r);
+    if (r) {
+      throw_(t, r);
+    } else {
+      size *= 2;
+    }
+  }
 }
 
 object
@@ -3201,6 +3220,7 @@ wait(Thread* t, object o, int64_t milliseconds)
 
     if (interrupted) {
       if (t->m->alive or (t->flags & Thread::DaemonFlag) == 0) {
+        t->m->classpath->clearInterrupted(t);
         throwNew(t, Machine::InterruptedExceptionType);
       } else {
         throw_(t, root(t, Machine::Shutdown));
@@ -3884,10 +3904,10 @@ errorLog(Thread* t)
 
 } // namespace vm
 
-void
+JNIEXPORT void
 vmPrintTrace(vm::Thread* t);
 
-void*
+JNIEXPORT void*
 vmAddressFromLine(vm::Thread* t, vm::object m, unsigned line);
 
 #endif//MACHINE_H
