@@ -1,0 +1,56 @@
+avian (0.7+20140401-1) unstable; urgency=low
+
+  * Update to 20140401.
+
+ -- Xerxes Rånby <xerxes@zafena.se>  Fri, 04 Apr 2013 15:44:39 +0200
+ 
+avian (0.6+20130401-0ubuntu1) raring; urgency=low
+
+  * Update to 20130401.
+
+ -- Matthias Klose <doko@ubuntu.com>  Mon, 01 Apr 2013 12:19:33 +0200
+
+avian (0.6+20121011-1) unstable; urgency=low
+
+  * Update to 20121011.
+  * fix sun.misc.Unsafe.getLongVolatile for static fields on 32-bit platforms.
+  * fix reads of out-of-bounds values in tokenizer.h
+  * fix incorrect reporting of fixie collection status in heap.cpp
+  * fix a couple of ByteBuffer regressions
+  * fix a couple of OpenJDK reflection bugs, allows avian to run icedtea-netx.
+  * make JVM_GetSystemPackage a bit smarter, allows avian to run javazoom jlgui.
+  * fix missing armv4 blx and bkpt compile errors. Unbreak build on
+    Debian armel.
+  * return null from JNIEnv::GetSuperclass for interfaces per spec
+  * gcc define __ARM_PCS_VFP for -mfloat-abi=hard, use it to detect armhf
+  * handle zero length arrays properly in JNIEnv::NewString
+  * fix abort in classpath-openjdk.cpp due to buffer overflow
+  * fix OS X 10.8 and iOS 6.0 builds
+  * use ldmneia on Clang < 4 and GCC, ldmiane on Clang >= 4
+  * clear any weak/soft/phantom references to finalizable objects before queuing
+  * fix Call[Static]<type>MethodA float argument marshalling
+  * update static table class reference in updateClassTables
+  * update static table mapping code in bootimage.cpp to match machine.cpp
+  * rename package avian.avian_vm_resource to avian.avianvmresource
+
+ -- Xerxes Rånby <xerxes@zafena.se>  Thu, 11 Oct 2012 10:39:39 +0200
+
+avian (0.6+20120911-0ubuntu1) quantal; urgency=low
+
+  * Update to 20120911.
+  * add JNI_GetCreatedJavaVMs stub. (LP: #1047395)
+  * Drop soname.diff and version-info.diff patches that are now upstream.
+
+ -- Xerxes Rånby <xerxes@zafena.se>  Mon, 10 Sep 2012 12:06:29 +0200
+
+avian (0.6+20120905-1) unstable; urgency=low
+
+  * Initial release. Closes: #686760.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 05 Sep 2012 12:24:24 +0200
+
+avian (0.6+20120905-0ubuntu1) quantal; urgency=low
+
+  * Initial release. Closes: #686760.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 05 Sep 2012 12:24:24 +0200

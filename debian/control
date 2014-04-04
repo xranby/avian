@@ -1,0 +1,26 @@
+Source: avian
+Section: java
+Priority: extra
+Maintainer: OpenJDK Team <openjdk@lists.launchpad.net>
+Uploaders: Matthias Klose <doko@ubuntu.com>, Xerxes Rånby <xerxes@zafena.se>
+Build-Depends: debhelper (>= 8.0.0), openjdk-7-jdk, zlib1g-dev, g++-4.7
+Standards-Version: 3.9.3
+Homepage: http://oss.readytalk.com/avian/
+
+Package: jvm-7-avian-jre
+Architecture: amd64 armel armhf i386 powerpc
+Depends: ${shlibs:Depends}, ${misc:Depends}, openjdk-7-jre-headless
+Description: lightweight virtual machine using the OpenJDK class library
+ Avian is a lightweight virtual machine and class library designed
+ to provide a useful subset of Java's features, suitable for building
+ self-contained applications.
+ .
+ The VM is implemented from scratch and designed to be both fast and small.
+ .
+  - Just-In-Time (JIT) compilation for fast method execution.
+  - Generational, copying garbage collection ensures short pause times and good
+    spatial locality.
+  - Thread-local heaps provide O(1) memory allocation with no synchronization
+    overhead.
+  - Null pointer dereferences are handled via OS signals to avoid unnecessary
+    branches.

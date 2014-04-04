@@ -1,0 +1,66 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+d = debian/jvm-7-avian-jre
+
+DPKG_CFLAGS  := $(shell dpkg-buildflags --get CPPFLAGS; dpkg-buildflags --get CFLAGS)
+DPKG_LFLAGS := $(shell dpkg-buildflags --get LDFLAGS)
+
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+
+archdir_map  = armel=arm armhf=arm amd64=amd64 i386=i386 powerpc=ppc powerpcspe=ppc
+
+archdir := $(strip $(patsubst $(DEB_HOST_ARCH)=%, %, \
+               $(filter $(DEB_HOST_ARCH)=%, $(archdir_map))))
+
+ifeq ($(DEB_HOST_ARCH),amd64)
+  AVIAN_ARCH = x86_64
+else ifneq (,$(filter $(DEB_HOST_ARCH),armel armhf))
+  AVIAN_ARCH = arm
+else
+  AVIAN_ARCH = $(DEB_HOST_ARCH)
+endif
+
+# segfault with -flto on ARM and powerpc
+ifneq (,$(filter $(DEB_HOST_ARCH),amd64 i386))
+  use_lto=true
+endif
+
+JAVA_HOME = /usr/lib/jvm/java-7-openjdk-$(DEB_HOST_ARCH)
+
+version := $(shell dpkg-parsechangelog | awk '/^Version:/ {print $$2}')
+info := package $(version)
+
+%:
+	dh $@ 
+
+override_dh_auto_configure:
+
+override_dh_auto_build:
+	make MAKEFLAGS= \
+		JAVA_HOME=$(JAVA_HOME) \
+		openjdk=$(JAVA_HOME) \
+		build-cc=gcc-4.7 build-cxx=g++-4.7 \
+		DPKG_CFLAGS="$(DPKG_CFLAGS)" \
+		DPKG_LFLAGS="$(DPKG_LFLAGS)" \
+		use-lto=$(use_lto) \
+		info='$(info)'
+
+override_dh_auto_test:
+	-make MAKEFLAGS= test \
+		JAVA_HOME=$(JAVA_HOME) \
+		openjdk=$(JAVA_HOME)
+
+override_dh_auto_install:
+	mkdir -p $(d)/$(JAVA_HOME)/jre/lib/$(archdir)/avian
+	cp build/linux-$(AVIAN_ARCH)-openjdk/libjvm.so \
+		$(d)/$(JAVA_HOME)/jre/lib/$(archdir)/avian/.
+	dh_install
+
+override_dh_auto_clean:
+	rm -rf build
+	dh_auto_clean
+

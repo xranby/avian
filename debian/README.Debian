@@ -1,0 +1,16 @@
+avian for Debian
+----------------
+
+This package is built to use the OpenJDK class library.  To use
+the Avian runtime, start java with the option -avian, like:
+
+	java -avian -version
+
+When backporting the package, please make sure that the jvm.cfg for
+OpenJDK 7 has the line
+
+	-avian KNOWN
+
+at the end of the configuration file (without leading whitespace).
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 05 Sep 2012 12:24:24 +0200
