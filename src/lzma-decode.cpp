@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -15,22 +15,22 @@ using namespace vm;
 
 namespace {
 
-int32_t
-read4(const uint8_t* in)
+int32_t read4(const uint8_t* in)
 {
   return (static_cast<int32_t>(in[3]) << 24)
-    |    (static_cast<int32_t>(in[2]) << 16)
-    |    (static_cast<int32_t>(in[1]) <<  8)
-    |    (static_cast<int32_t>(in[0])      );
+         | (static_cast<int32_t>(in[2]) << 16)
+         | (static_cast<int32_t>(in[1]) << 8) | (static_cast<int32_t>(in[0]));
 }
 
-} // namespace
+}  // namespace
 
 namespace vm {
 
-uint8_t*
-decodeLZMA(System* s, avian::util::Allocator* a, uint8_t* in, unsigned inSize,
-           unsigned* outSize)
+uint8_t* decodeLZMA(System* s,
+                    avian::util::Alloc* a,
+                    uint8_t* in,
+                    unsigned inSize,
+                    unsigned* outSize)
 {
   const unsigned PropHeaderSize = 5;
   const unsigned HeaderSize = 13;
@@ -45,9 +45,15 @@ decodeLZMA(System* s, avian::util::Allocator* a, uint8_t* in, unsigned inSize,
   LzmaAllocator allocator(a);
 
   ELzmaStatus status;
-  int result = LzmaDecode
-    (out, &outSizeT, in + HeaderSize, &inSizeT, in, PropHeaderSize,
-     LZMA_FINISH_END, &status, &(allocator.allocator));
+  int result = LzmaDecode(out,
+                          &outSizeT,
+                          in + HeaderSize,
+                          &inSizeT,
+                          in,
+                          PropHeaderSize,
+                          LZMA_FINISH_END,
+                          &status,
+                          &(allocator.allocator));
 
   expect(s, result == SZ_OK);
   expect(s, status == LZMA_STATUS_FINISHED_WITH_MARK);
@@ -57,5 +63,4 @@ decodeLZMA(System* s, avian::util::Allocator* a, uint8_t* in, unsigned inSize,
   return out;
 }
 
-} // namespace vm
-
+}  // namespace vm

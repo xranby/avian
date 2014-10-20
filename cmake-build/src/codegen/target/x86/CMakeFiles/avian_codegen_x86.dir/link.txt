@@ -1,0 +1,2 @@
+/usr/bin/ar cr libavian_codegen_x86.a  CMakeFiles/avian_codegen_x86.dir/assembler.cpp.o CMakeFiles/avian_codegen_x86.dir/block.cpp.o CMakeFiles/avian_codegen_x86.dir/context.cpp.o CMakeFiles/avian_codegen_x86.dir/detect.cpp.o CMakeFiles/avian_codegen_x86.dir/encode.cpp.o CMakeFiles/avian_codegen_x86.dir/fixup.cpp.o CMakeFiles/avian_codegen_x86.dir/multimethod.cpp.o CMakeFiles/avian_codegen_x86.dir/operations.cpp.o CMakeFiles/avian_codegen_x86.dir/padding.cpp.o
+/usr/bin/ranlib libavian_codegen_x86.a

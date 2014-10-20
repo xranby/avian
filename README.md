@@ -6,35 +6,37 @@ Avian - A lightweight Java Virtual Machine (JVM)
 Quick Start
 -----------
 
+These are examples of building Avian on various operating systems for
+the x86_64 architecture.  You may need to modify JAVA_HOME according
+to where the JDK is installed on your system.  In all cases, be sure
+to use forward slashes in the path.
+
 #### on Linux:
-    $ export JAVA_HOME=/usr/local/java # or wherever you have the JDK installed
+    $ export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
     $ make
-    $ build/linux-i386/avian -cp build/linux-i386/test Hello
+    $ build/linux-x86_64/avian -cp build/linux-x86_64/test Hello
 
 #### on Mac OS X:
-    $ export JAVA_HOME=/Library/Java/Home
+    $ export JAVA_HOME=$(/usr/libexec/java_home)
     $ make
-    $ build/darwin-i386/avian -cp build/darwin-i386/test Hello
+    $ build/macosx-x86_64/avian -cp build/macosx-x86_64/test Hello
  
 #### on Windows (MSYS):
-    $ git clone git@github.com:ReadyTalk/win32.git ../win32
-    $ export JAVA_HOME="C:/Program Files/Java/jdk1.6.0_07"
+    $ git clone git@github.com:ReadyTalk/win64.git ../win64
+    $ export JAVA_HOME="C:/Program Files/Java/jdk1.7.0_45"
     $ make
-    $ build/windows-i386/avian -cp build/windows-i386/test Hello
+    $ build/windows-x86_64/avian -cp build/windows-x86_64/test Hello
 
 #### on Windows (Cygwin):
-    $ git clone git@github.com:ReadyTalk/win32.git ../win32
-    $ export JAVA_HOME="/cygdrive/c/Program Files/Java/jdk1.6.0_07"
+    $ git clone git@github.com:ReadyTalk/win64.git ../win64
+    $ export JAVA_HOME="/cygdrive/c/Program Files/Java/jdk1.7.0_45"
     $ make
-    $ build/windows-i386/avian -cp build/windows-i386/test Hello
+    $ build/windows-x86_64/avian -cp build/windows-x86_64/test Hello
 
 #### on FreeBSD:
-    $ export JAVA_HOME=/usr/local/openjdk7 # or wherever you have the JDK installed
+    $ export JAVA_HOME=/usr/local/openjdk7
     $ gmake
     $ build/freebsd-x86_64/avian -cp build/freebsd-x86_64/test Hello
-
-Adjust JAVA_HOME according to your system, but be sure to use forward
-slashes in the path.
 
 
 Introduction
@@ -57,7 +59,7 @@ Supported Platforms
 
 Avian can currently target the following platforms:
 
-  * Linux (i386, x86_64, ARM, and 32-bit PowerPC)
+  * Linux (i386, x86_64, and ARM)
   * Windows (i386 and x86_64)
   * Mac OS X (i386 and x86_64)
   * Apple iOS (i386 and ARM)
@@ -70,9 +72,9 @@ Building
 Build requirements include:
 
   * GNU make 3.80 or later
-  * GCC 3.4 or later (4.5.1 or later for Windows/x86_64)
+  * GCC 4.6 or later
       or LLVM Clang 3.1 or later (see use-clang option below)
-  * JDK 1.5 or later
+  * JDK 1.6 or later
   * MinGW 3.4 or later (only if compiling for Windows)
   * zlib 1.2.3 or later
 
@@ -83,12 +85,11 @@ The build is directed by a single makefile and may be influenced via
 certain flags described below, all of which are optional.
 
     $ make \
-        platform={linux,windows,darwin,freebsd} \
-        arch={i386,x86_64,powerpc,arm} \
+        platform={linux,windows,macosx,ios,freebsd} \
+        arch={i386,x86_64,arm} \
         process={compile,interpret} \
         mode={debug,debug-fast,fast,small} \
         lzma=<lzma source directory> \
-        ios={true,false} \
         bootimage={true,false} \
         heapdump={true,false} \
         tails={true,false} \
@@ -119,13 +120,6 @@ boot images.  The value of this option should be a directory
 containing a recent LZMA SDK (available [here](http://www.7-zip.org/sdk.html)).  Currently, only version 9.20 of
 the SDK has been tested, but other versions might work.  
     * _default:_ not set
-
-  * `ios` - if true, cross-compile for iOS on OS X.  Note that
-non-jailbroken iOS devices do not allow JIT compilation, so only
-process=interpret or bootimage=true builds will run on such
-devices.  See [here](https://github.com/ReadyTalk/hello-ios) for an
-example of an Xcode project for iOS which uses Avian.  
-    * _default:_ false
 
   * `armv6` - if true, don't use any instructions newer than armv6.  By
 default, we assume the target is armv7 or later, and thus requires explicit
@@ -186,6 +180,12 @@ _build/linux-i386-debug-bootimage_.  This allows you to build with
 several different sets of options independently and even
 simultaneously without doing a clean build each time.
 
+Note that not all combinations of these flags are valid.  For instance,
+non-jailbroken iOS devices do not allow JIT compilation, so only
+process=interpret or bootimage=true builds will run on such
+devices.  See [here](https://github.com/ReadyTalk/hello-ios) for an
+example of an Xcode project for iOS which uses Avian.  
+
 If you are compiling for Windows, you may either cross-compile using
 MinGW or build natively on Windows under MSYS or Cygwin.
 
@@ -226,24 +226,25 @@ still need to have GCC installed - MSVC is only used to compile the
 C++ portions of the VM, while the assembly code and helper tools are
 built using GCC.
 
-The MSVC build has been tested with Visual Studio Express Edition
-versions 8, 9, and 10.  Other versions may also work.
+*Note that the MSVC build isn't tested regularly, so is fairly likely to be broken.*
+
+Avian targets MSVC 11 and above (it uses c++ features not available in older versions).
 
 To build with MSVC, install Cygwin as described above and set the
 following environment variables:
 
-    $ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/cygdrive/c/Program Files/Microsoft Visual Studio 9.0/Common7/IDE:/cygdrive/c/Program Files/Microsoft Visual Studio 9.0/VC/BIN:/cygdrive/c/Program Files/Microsoft Visual Studio 9.0/Common7/Tools:/cygdrive/c/WINDOWS/Microsoft.NET/Framework/v3.5:/cygdrive/c/WINDOWS/Microsoft.NET/Framework/v2.0.50727:/cygdrive/c/Program Files/Microsoft Visual Studio 9.0/VC/VCPackages:/cygdrive/c/Program Files/Microsoft SDKs/Windows/v6.0A/bin:/cygdrive/c/WINDOWS/system32:/cygdrive/c/WINDOWS:/cygdrive/c/WINDOWS/System32/Wbem"
-    $ export LIBPATH="C:\WINDOWS\Microsoft.NET\Framework\v3.5;C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727;C:\Program Files\Microsoft Visual Studio 9.0\VC\LIB;"
-    $ export VCINSTALLDIR="C:\Program Files\Microsoft Visual Studio 9.0\VC"
-    $ export LIB="C:\Program Files\Microsoft Visual Studio 9.0\VC\LIB;C:\Program Files\Microsoft SDKs\Windows\v6.0A\lib;"
-    $ export INCLUDE="C:\Program Files\Microsoft Visual Studio 9.0\VC\INCLUDE;C:\Program Files\Microsoft SDKs\Windows\v6.0A\include;"
+    $ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/cygdrive/c/Program Files/Microsoft Visual Studio 11.0/Common7/IDE:/cygdrive/c/Program Files/Microsoft Visual Studio 11.0/VC/BIN:/cygdrive/c/Program Files/Microsoft Visual Studio 11.0/Common7/Tools:/cygdrive/c/WINDOWS/Microsoft.NET/Framework/v3.5:/cygdrive/c/WINDOWS/Microsoft.NET/Framework/v2.0.50727:/cygdrive/c/Program Files/Microsoft Visual Studio 11.0/VC/VCPackages:/cygdrive/c/Program Files/Microsoft SDKs/Windows/v6.0A/bin:/cygdrive/c/WINDOWS/system32:/cygdrive/c/WINDOWS:/cygdrive/c/WINDOWS/System32/Wbem"
+    $ export LIBPATH="C:\WINDOWS\Microsoft.NET\Framework\v3.5;C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727;C:\Program Files\Microsoft Visual Studio 11.0\VC\LIB;"
+    $ export VCINSTALLDIR="C:\Program Files\Microsoft Visual Studio 11.0\VC"
+    $ export LIB="C:\Program Files\Microsoft Visual Studio 11.0\VC\LIB;C:\Program Files\Microsoft SDKs\Windows\v6.0A\lib;"
+    $ export INCLUDE="C:\Program Files\Microsoft Visual Studio 11.0\VC\INCLUDE;C:\Program Files\Microsoft SDKs\Windows\v6.0A\include;"
 
 Adjust these definitions as necessary according to your MSVC
 installation.
 
 Finally, build with the msvc flag set to the MSVC tool directory:
 
-    $ make msvc="/cygdrive/c/Program Files/Microsoft Visual Studio 9.0/VC"
+    $ make msvc="/cygdrive/c/Program Files/Microsoft Visual Studio 11.0/VC"
 
 
 Building with the OpenJDK Class Library
@@ -388,7 +389,7 @@ the following, starting from the Avian directory:
     git clone https://android.googlesource.com/platform/external/openssl \
       external/openssl
     (cd external/openssl && \
-       git checkout 7b972f1aa23172c4430ada7f3236fa1fd9b31756)
+       git checkout 1417357d893849c4b6afdd98c32b6ca1b4b19a8b)
 
     git clone https://android.googlesource.com/platform/external/zlib \
       external/zlib
@@ -396,12 +397,11 @@ the following, starting from the Avian directory:
        git checkout 15b6223aa57a347ce113729253802cb2fdeb4ad0)
 
     git clone git://git.openssl.org/openssl.git openssl-upstream
-    (cd openssl-upstream && \
-       git checkout OpenSSL_1_0_1e)
+    (cd openssl-upstream && git checkout OpenSSL_1_0_1h)
 
     git clone https://github.com/dicej/android-libcore64 libcore
 
-    curl -Of http://oss.readytalk.com/avian/expat-2.1.0.tar.gz
+    curl -Of http://oss.readytalk.com/avian-web/expat-2.1.0.tar.gz
     (cd external && tar xzf ../expat-2.1.0.tar.gz && mv expat-2.1.0 expat)
 
     (cd external/expat && CFLAGS=-fPIC CXXFLAGS=-fPIC ./configure \
@@ -417,16 +417,8 @@ NB: use 'CC="gcc -fPIC" ./Configure darwin64-x86_64-cc' when building
 for x86_64 OS X instead of 'CC="gcc -fPIC" ./config':
 
     (cd openssl-upstream \
-       && (for x in \
-               progs \
-               handshake_cutthrough \
-               jsse \
-               channelid \
-               eng_dyn_dirs \
-               fix_clang_build \
-               tls12_digests \
-               alpn; \
-             do patch -p1 < ../external/openssl/patches/$x.patch; done) \
+       && (for x in ../external/openssl/patches/*.patch; \
+             do patch -p1 < $x; done) \
        && CC="gcc -fPIC" ./config && make)
 
     cd ../avian
@@ -441,7 +433,7 @@ Also note that we use the upstream OpenSSL repository and apply the
 Android patches to it.  This is because it is not clear how to build
 the Android fork of OpenSSL directly without checking out and building
 the entire platform.  As of this writing, the patches apply cleanly
-against OpenSSL 1.0.1e, so that's the tag we check out, but this may
+against OpenSSL 1.0.1h, so that's the tag we check out, but this may
 change in the future when the Android fork rebases against a new
 OpenSSL version.
 
@@ -515,7 +507,7 @@ setting the boot classpath to "[bootJar]".
     $ cat >embedded-jar-main.cpp <<EOF
     #include "stdint.h"
     #include "jni.h"
-	#include "stdlib.h" 
+    #include "stdlib.h" 
     
     #if (defined __MINGW32__) || (defined _MSC_VER)
     #  define EXPORT __declspec(dllexport)
@@ -719,7 +711,7 @@ using the OpenJDK library.)
 
 __6.__ Build the boot and code images.
 
-     $ ../build/linux-i386-bootimage/bootimage-generator
+     $ ../build/linux-i386-bootimage/bootimage-generator \
         -cp stage2 \
         -bootimage bootimage-bin.o \
         -codeimage codeimage-bin.o

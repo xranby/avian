@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -15,7 +15,7 @@ namespace avian {
 namespace codegen {
 namespace arm {
 
-Context::Context(vm::System* s, util::Allocator* a, vm::Zone* zone)
+Context::Context(vm::System* s, util::Alloc* a, vm::Zone* zone)
     : s(s),
       zone(zone),
       client(0),
@@ -31,6 +31,6 @@ Context::Context(vm::System* s, util::Allocator* a, vm::Zone* zone)
 {
 }
 
-} // namespace arm
-} // namespace codegen
-} // namespace avian
+}  // namespace arm
+}  // namespace codegen
+}  // namespace avian

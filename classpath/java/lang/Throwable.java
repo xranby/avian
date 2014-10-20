@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -12,7 +12,6 @@ package java.lang;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.io.IOException;
 import java.io.Serializable;
 
 public class Throwable implements Serializable {
@@ -113,9 +112,10 @@ public class Throwable implements Serializable {
       sb.append("  at ").append(trace[i].toString()).append(nl);
     }
 
-    if (cause != null) {
+    Throwable printCause = getCause();
+    if (printCause != null) {
       sb.append("caused by: ");
-      cause.printStackTrace(sb, nl);
+      printCause.printStackTrace(sb, nl);
     }
   }
 

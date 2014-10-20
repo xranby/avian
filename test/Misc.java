@@ -298,21 +298,53 @@ public class Misc {
       throw new RuntimeException(e);
     }
 
+    // as of this writing, we don't support URLs on Android, since it
+    // pulls in a third-party library we don't include:
+    if (! "http://www.android.com/".equals
+        (System.getProperty("java.vendor.url")))
+    {
+      expect(new URL("http://oss.readytalk.com")
+             .getHost().equals("oss.readytalk.com"));
+    }
+
     expect(java.util.Arrays.equals
 	   (new byte[] { 0, 0, 0, 0 },
 	    java.net.InetAddress.getByName("0.0.0.0").getAddress()));
 
-    try {
-      java.net.InetAddress.getByName
-	("bs.thisdomaindoesntexistseriouslynoway");
-      throw new AssertionError();
-    } catch (java.net.UnknownHostException e) {
-      // cool
-    }
-
     expect(! staticRan);
     Static.run();
     expect(staticRan);
+
+    expect(System.getProperty("java.class.path").equals
+           (System.getProperties().get("java.class.path")));
+
+    expect(System.getProperty("path.separator").equals
+           (System.getProperties().get("path.separator")));
+
+    expect(System.getProperty("user.dir").equals
+           (System.getProperties().get("user.dir")));
+
+    expect(System.getProperty("java.io.tmpdir").equals
+           (System.getProperties().get("java.io.tmpdir")));
+
+    System.setProperty("buzzy.buzzy.bim.bam", "dippy dopey flim flam");
+
+    expect(System.getProperty("buzzy.buzzy.bim.bam").equals
+           (System.getProperties().get("buzzy.buzzy.bim.bam")));
+
+    expect(System.getProperty("buzzy.buzzy.bim.bam").equals
+           ("dippy dopey flim flam"));
+
+    System.getProperties().put("buzzy.buzzy.bim.bam", "yippy yappy yin yang");
+
+    expect(System.getProperty("buzzy.buzzy.bim.bam").equals
+           (System.getProperties().get("buzzy.buzzy.bim.bam")));
+
+    expect(System.getProperty("buzzy.buzzy.bim.bam").equals
+           ("yippy yappy yin yang"));
+
+    // just test that it's there; don't care what it returns:
+    Runtime.getRuntime().totalMemory();
   }
 
   protected class Protected { }

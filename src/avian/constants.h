@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -233,47 +233,50 @@ enum TypeCode {
 
 enum Constant {
   CONSTANT_Class = 7,
-  CONSTANT_Fieldref = 9,
-  CONSTANT_Methodref = 10,
-  CONSTANT_InterfaceMethodref = 11,
-  CONSTANT_String = 8,
-  CONSTANT_Integer = 3,
-  CONSTANT_Float = 4,
-  CONSTANT_Long = 5,
   CONSTANT_Double = 6,
+  CONSTANT_Fieldref = 9,
+  CONSTANT_Float = 4,
+  CONSTANT_Integer = 3,
+  CONSTANT_InterfaceMethodref = 11,
+  CONSTANT_InvokeDynamic = 18,
+  CONSTANT_Long = 5,
+  CONSTANT_MethodHandle = 15,
+  CONSTANT_MethodType = 16,
+  CONSTANT_Methodref = 10,
   CONSTANT_NameAndType = 12,
+  CONSTANT_String = 8,
   CONSTANT_Utf8 = 1
 };
 
-const unsigned ACC_PUBLIC       = 1 <<  0;
-const unsigned ACC_PRIVATE      = 1 <<  1;
-const unsigned ACC_PROTECTED    = 1 <<  2;
-const unsigned ACC_STATIC       = 1 <<  3;
-const unsigned ACC_FINAL        = 1 <<  4;
-const unsigned ACC_SUPER        = 1 <<  5;
+const unsigned ACC_PUBLIC = 1 << 0;
+const unsigned ACC_PRIVATE = 1 << 1;
+const unsigned ACC_PROTECTED = 1 << 2;
+const unsigned ACC_STATIC = 1 << 3;
+const unsigned ACC_FINAL = 1 << 4;
+const unsigned ACC_SUPER = 1 << 5;
 const unsigned ACC_SYNCHRONIZED = ACC_SUPER;
-const unsigned ACC_VOLATILE     = 1 <<  6;
-const unsigned ACC_TRANSIENT    = 1 <<  7;
-const unsigned ACC_NATIVE       = 1 <<  8;
-const unsigned ACC_INTERFACE    = 1 <<  9;
-const unsigned ACC_ABSTRACT     = 1 << 10;
-const unsigned ACC_STRICT       = 1 << 11;
+const unsigned ACC_VOLATILE = 1 << 6;
+const unsigned ACC_TRANSIENT = 1 << 7;
+const unsigned ACC_NATIVE = 1 << 8;
+const unsigned ACC_INTERFACE = 1 << 9;
+const unsigned ACC_ABSTRACT = 1 << 10;
+const unsigned ACC_STRICT = 1 << 11;
 
 const int AVIAN_JNI_COMMIT = 1;
-const int AVIAN_JNI_ABORT  = 2;
+const int AVIAN_JNI_ABORT = 2;
 
-const int AVIAN_JNI_OK        =  0;
-const int AVIAN_JNI_ERR       = -1;
+const int AVIAN_JNI_OK = 0;
+const int AVIAN_JNI_ERR = -1;
 const int AVIAN_JNI_EDETACHED = -2;
-const int AVIAN_JNI_EVERSION  = -3;
-const int AVIAN_JNI_ENOMEM    = -4;
-const int AVIAN_JNI_EEXIST    = -5;
-const int AVIAN_JNI_EINVAL    = -6;
+const int AVIAN_JNI_EVERSION = -3;
+const int AVIAN_JNI_ENOMEM = -4;
+const int AVIAN_JNI_EEXIST = -5;
+const int AVIAN_JNI_EINVAL = -6;
 
 const int AVIAN_JNI_VERSION_1_1 = 0x00010001;
 const int AVIAN_JNI_VERSION_1_2 = 0x00010002;
 const int AVIAN_JNI_VERSION_1_4 = 0x00010004;
 
-} // namespace vm
+}  // namespace vm
 
-#endif//CONSTANTS_H
+#endif  // CONSTANTS_H

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -21,12 +21,7 @@ class System : public avian::util::Aborter {
  public:
   typedef intptr_t Status;
 
-  enum FileType {
-    TypeUnknown,
-    TypeDoesNotExist,
-    TypeFile,
-    TypeDirectory
-  };
+  enum FileType { TypeUnknown, TypeDoesNotExist, TypeFile, TypeDirectory };
 
   class Thread {
    public:
@@ -100,11 +95,13 @@ class System : public avian::util::Aborter {
 
   class MonitorResource {
    public:
-    MonitorResource(System::Thread* t, System::Monitor* m): t(t), m(m) {
+    MonitorResource(System::Thread* t, System::Monitor* m) : t(t), m(m)
+    {
       m->acquire(t);
     }
 
-    ~MonitorResource() {
+    ~MonitorResource()
+    {
       m->release(t);
     }
 
@@ -116,18 +113,14 @@ class System : public avian::util::Aborter {
   virtual bool success(Status) = 0;
   virtual void* tryAllocate(unsigned sizeInBytes) = 0;
   virtual void free(const void* p) = 0;
-#if !defined(AVIAN_AOT_ONLY)
-  virtual void* tryAllocateExecutable(unsigned sizeInBytes) = 0;
-  virtual void freeExecutable(const void* p, unsigned sizeInBytes) = 0;
-#endif
   virtual Status attach(Runnable*) = 0;
   virtual Status start(Runnable*) = 0;
   virtual Status make(Mutex**) = 0;
   virtual Status make(Monitor**) = 0;
   virtual Status make(Local**) = 0;
 
-  virtual Status visit(Thread* thread, Thread* target,
-                       ThreadVisitor* visitor) = 0;
+  virtual Status visit(Thread* thread, Thread* target, ThreadVisitor* visitor)
+      = 0;
 
   virtual Status map(Region**, const char* name) = 0;
   virtual FileType stat(const char* name, unsigned* length) = 0;
@@ -137,7 +130,7 @@ class System : public avian::util::Aborter {
   virtual Status load(Library**, const char* name) = 0;
   virtual char pathSeparator() = 0;
   virtual char fileSeparator() = 0;
-  virtual const char* toAbsolutePath(avian::util::Allocator* allocator,
+  virtual const char* toAbsolutePath(avian::util::AllocOnly* allocator,
                                      const char* name) = 0;
   virtual int64_t now() = 0;
   virtual void yield() = 0;
@@ -145,47 +138,46 @@ class System : public avian::util::Aborter {
   virtual void dispose() = 0;
 };
 
-inline void*
-allocate(System* s, unsigned size)
+inline void* allocate(System* s, unsigned size)
 {
   void* p = s->tryAllocate(size);
-  if (p == 0) s->abort();
+  if (p == 0)
+    s->abort();
   return p;
 }
 
 #define ACQUIRE_MONITOR(t, m) \
-  System::MonitorResource MAKE_NAME(monitorResource_) (t, m)
+  System::MonitorResource MAKE_NAME(monitorResource_)(t, m)
 
-inline avian::util::Aborter* getAborter(System* s) {
+inline avian::util::Aborter* getAborter(System* s)
+{
   return s;
 }
 
-inline void NO_RETURN
-sysAbort(System* s)
+inline void NO_RETURN sysAbort(System* s)
 {
   abort(s);
 }
 
 // #ifdef NDEBUG
 
-// # define assert(a, b)
+// # define assertT(a, b)
 // # define vm_assert(a, b)
 
 // #else // not NDEBUG
 
 // inline void
-// assert(System* s, bool v)
+// assertT(System* s, bool v)
 // {
 //   expect(s, v);
 // }
 
-// # define vm_assert(a, b) vm::assert(a, b)
+// # define vm_assert(a, b) vm::assertT(a, b)
 
 // #endif // not NDEBUG
 
-AVIAN_EXPORT System*
-makeSystem();
+AVIAN_EXPORT System* makeSystem();
 
-} // namespace vm
+}  // namespace vm
 
-#endif//SYSTEM_H
+#endif  // SYSTEM_H

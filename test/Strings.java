@@ -124,22 +124,39 @@ public class Strings {
     expect(months.split("\u00ae").length == 3);
     expect(months.replaceAll("\u00ae", ".").equals("Jan.Feb.Mar."));
 
+    // Java 8 changed the semantics of String.split relative to
+    // previous versions, therefore we accept multiple possible
+    // results:
     expect(arraysEqual
-           ("xyz".split("",  0), new String[] { "", "x", "y", "z" }));
+           ("xyz".split("",  0), new String[] { "", "x", "y", "z" })
+           || arraysEqual
+           ("xyz".split("",  0), new String[] { "x", "y", "z" }));
     expect(arraysEqual
            ("xyz".split("",  1), new String[] { "xyz" }));
     expect(arraysEqual
-           ("xyz".split("",  2), new String[] { "", "xyz" }));
+           ("xyz".split("",  2), new String[] { "", "xyz" })
+           || arraysEqual
+           ("xyz".split("",  2), new String[] { "x", "yz" }));
     expect(arraysEqual
-           ("xyz".split("",  3), new String[] { "", "x", "yz" }));
+           ("xyz".split("",  3), new String[] { "", "x", "yz" })
+           || arraysEqual
+           ("xyz".split("",  3), new String[] { "x", "y", "z" }));
     expect(arraysEqual
-           ("xyz".split("",  4), new String[] { "", "x", "y", "z" }));
+           ("xyz".split("",  4), new String[] { "", "x", "y", "z" })
+           || arraysEqual
+           ("xyz".split("",  4), new String[] { "x", "y", "z", "" }));
     expect(arraysEqual
-           ("xyz".split("",  5), new String[] { "", "x", "y", "z", "" }));
+           ("xyz".split("",  5), new String[] { "", "x", "y", "z", "" })
+           || arraysEqual
+           ("xyz".split("",  5), new String[] { "x", "y", "z", "" }));
     expect(arraysEqual
-           ("xyz".split("",  6), new String[] { "", "x", "y", "z", "" }));
+           ("xyz".split("",  6), new String[] { "", "x", "y", "z", "" })
+           || arraysEqual
+           ("xyz".split("",  6), new String[] { "x", "y", "z", "" }));
     expect(arraysEqual
-           ("xyz".split("", -1), new String[] { "", "x", "y", "z", "" }));
+           ("xyz".split("", -1), new String[] { "", "x", "y", "z", "" })
+           || arraysEqual
+           ("xyz".split("", -1), new String[] { "x", "y", "z", "" }));
 
     expect(arraysEqual("".split("xyz",  0), new String[] { "" }));
     expect(arraysEqual("".split("xyz",  1), new String[] { "" }));
@@ -182,7 +199,7 @@ public class Strings {
        .equals("I enjoy grape nuts.  do you?  you do?"));
 
     { java.io.ByteArrayOutputStream bout = new java.io.ByteArrayOutputStream();
-      java.io.PrintStream pout = new java.io.PrintStream(bout);
+      java.io.PrintStream pout = new java.io.PrintStream(bout, true, "UTF-8");
       String s = "I ♥ grape nuts";
       System.out.println(s);
       pout.println(s);
@@ -190,21 +207,25 @@ public class Strings {
       expect
         (arraysEqual
          (bout.toByteArray(),
-          (s + System.getProperty("line.separator")).getBytes()));
+          (s + System.getProperty("line.separator")).getBytes("UTF-8")));
 
-      // note that this effectively asserts that the VM's default
-      // charset is UTF-8.  If we want to make this test more
-      // portable, we should specify the charset explicitly.
       expect
         (arraysEqual
          (bout.toByteArray(), append
           (new byte[] { 73, 32, -30, -103, -91, 32, 103, 114, 97, 112, 101,
                         32, 110, 117, 116, 115 },
-            System.getProperty("line.separator").getBytes())));
+            System.getProperty("line.separator").getBytes("UTF-8"))));
     }
 
     expect("abc".lastIndexOf('b', 100) == 1);
 
     testTrivialPattern();
+
+    { String s = "hello, world!";
+      java.nio.CharBuffer buffer = java.nio.CharBuffer.allocate(s.length());
+      new java.io.InputStreamReader
+        (new java.io.ByteArrayInputStream(s.getBytes())).read(buffer);
+      expect(s.equals(new String(buffer.array())));
+    }
   }
 }

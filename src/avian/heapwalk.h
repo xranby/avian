@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -29,8 +29,8 @@ class HeapVisitor {
   virtual void root() = 0;
   virtual unsigned visitNew(object value) = 0;
   virtual void visitOld(object value, unsigned number) = 0;
-  virtual void push(object parent, unsigned parentNumber,
-                    unsigned childOffset) = 0;
+  virtual void push(object parent, unsigned parentNumber, unsigned childOffset)
+      = 0;
   virtual void pop() = 0;
 };
 
@@ -42,9 +42,8 @@ class HeapWalker {
   virtual void dispose() = 0;
 };
 
-HeapWalker*
-makeHeapWalker(Thread* t, HeapVisitor* v);
+HeapWalker* makeHeapWalker(Thread* t, HeapVisitor* v);
 
-} // namespace vm
+}  // namespace vm
 
-#endif//HEAPWALK_H
+#endif  // HEAPWALK_H

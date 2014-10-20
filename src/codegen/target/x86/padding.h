@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -28,12 +28,13 @@ class AlignmentPadding {
   int padding;
 };
 
-unsigned
-padding(AlignmentPadding* p, unsigned start, unsigned offset,
-        AlignmentPadding* limit);
+unsigned padding(AlignmentPadding* p,
+                 unsigned start,
+                 unsigned offset,
+                 AlignmentPadding* limit);
 
-} // namespace x86
-} // namespace codegen
-} // namespace avian
+}  // namespace x86
+}  // namespace codegen
+}  // namespace avian
 
-#endif // AVIAN_CODEGEN_ASSEMBLER_X86_PADDING_H
+#endif  // AVIAN_CODEGEN_ASSEMBLER_X86_PADDING_H

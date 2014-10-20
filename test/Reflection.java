@@ -252,10 +252,40 @@ public class Reflection {
 
     expect(avian.testing.annotations.Test.class.getPackage().getName().equals
            ("avian.testing.annotations"));
+
+    expect(Baz.class.getField("foo").getAnnotation(Ann.class) == null);
+    expect(Baz.class.getField("foo").getAnnotations().length == 0);
+
+    expect(new Runnable() { public void run() { } }.getClass()
+           .getEnclosingMethod().equals
+           (Reflection.class.getMethod
+            ("main", new Class[] { String[].class })));
+
+    Slithy.class.getMethod("tove", Gybe.class);
+
+    try {
+      Slithy.class.getMethod("tove", Bandersnatch.class);
+      expect(false);
+    } catch (NoSuchMethodException e) {
+      // cool
+    }
+
+    expect(C.class.getInterfaces().length == 1);
+    expect(C.class.getInterfaces()[0].equals(B.class));
   }
 
   protected static class Baz {
     public int foo = 42;
+  }
+}
+
+class Bandersnatch { }
+
+class Gybe extends Bandersnatch { }
+
+class Slithy {
+  public static void tove(Gybe gybe) {
+    // ignore
   }
 }
 
@@ -280,3 +310,9 @@ interface A {
 }
 
 interface B extends A { }
+
+class C implements B {
+  public void foo() { }
+}
+
+@interface Ann { }

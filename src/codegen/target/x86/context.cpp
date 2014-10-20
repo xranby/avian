@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -18,12 +18,13 @@ namespace avian {
 namespace codegen {
 namespace x86 {
 
-ArchitectureContext::ArchitectureContext(vm::System* s, bool useNativeFeatures):
-  s(s), useNativeFeatures(useNativeFeatures)
-{ }
+ArchitectureContext::ArchitectureContext(vm::System* s, bool useNativeFeatures)
+    : s(s), useNativeFeatures(useNativeFeatures)
+{
+}
 
 Context::Context(vm::System* s,
-                 util::Allocator* a,
+                 util::Alloc* a,
                  vm::Zone* zone,
                  ArchitectureContext* ac)
     : s(s),
@@ -38,6 +39,6 @@ Context::Context(vm::System* s,
 {
 }
 
-} // namespace x86
-} // namespace codegen
-} // namespace avian
+}  // namespace x86
+}  // namespace codegen
+}  // namespace avian

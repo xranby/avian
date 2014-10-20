@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -16,18 +16,25 @@
 namespace avian {
 namespace util {
 
-class Allocator {
+class AllocOnly {
  public:
-  // TODO: use size_t instead of unsigned
-  virtual void* tryAllocate(unsigned size) = 0;
-  virtual void* allocate(unsigned size) = 0;
-  virtual void free(const void* p, unsigned size) = 0;
+  virtual void* allocate(size_t size) = 0;
+};
+
+class Alloc : public AllocOnly {
+ public:
+  virtual void free(const void* p, size_t size) = 0;
+};
+
+class Allocator : public Alloc {
+ public:
+  virtual void* tryAllocate(size_t size) = 0;
 };
 
 }  // namespace util
 }  // namespace avian
 
-inline void* operator new(size_t size, avian::util::Allocator* allocator)
+inline void* operator new(size_t size, avian::util::AllocOnly* allocator)
 {
   return allocator->allocate(size);
 }

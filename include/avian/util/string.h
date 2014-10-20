@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -17,47 +17,20 @@ namespace avian {
 namespace util {
 
 class String {
-public:
+ public:
   const char* text;
   size_t length;
 
-  String(const char* text):
-    text(text),
-    length(strlen(text)) {}
-  
-  inline String(const char* text, size_t length):
-    text(text),
-    length(length) {}
-};
-
-class Tokenizer {
- public:
-
-  Tokenizer(const char* s, char delimiter):
-    s(s), limit(0), delimiter(delimiter)
-  { }
-
-  Tokenizer(String str, char delimiter):
-    s(str.text), limit(str.text + str.length), delimiter(delimiter)
-  { }
-
-  bool hasMore() {
-    while (s != limit and *s == delimiter) ++s;
-    return s != limit and *s != 0;
+  String(const char* text) : text(text), length(strlen(text))
+  {
   }
 
-  String next() {
-    const char* p = s;
-    while (s != limit and *s and *s != delimiter) ++s;
-    return String(p, s - p);
+  inline String(const char* text, size_t length) : text(text), length(length)
+  {
   }
-
-  const char* s;
-  const char* limit;
-  char delimiter;
 };
 
-} // namespace util
-} // namespace avain
+}  // namespace util
+}  // namespace avain
 
-#endif//AVIAN_UTIL_STRING_H
+#endif  // AVIAN_UTIL_STRING_H

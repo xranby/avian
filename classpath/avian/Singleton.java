@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -14,4 +14,6 @@ public abstract class Singleton {
   public static native int getInt(Object singleton, int offset);
   public static native long getLong(Object singleton, int offset);
   public static native Object getObject(Object singleton, int offset);
+
+  // Fields in types.def
 }

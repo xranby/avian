@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -171,8 +171,8 @@ public final class Class <T> implements Type, AnnotatedElement {
         return SystemClassLoader.getClass(Classes.primitiveClass('D'));
       }
 
-      if (vmClass.staticTable == null) throw new AssertionError();
-      return SystemClassLoader.getClass((VMClass) vmClass.staticTable);
+      if (vmClass.arrayElementClass == null) throw new AssertionError();
+      return SystemClassLoader.getClass((VMClass) vmClass.arrayElementClass);
     } else {
       return null;
     }
@@ -377,20 +377,25 @@ public final class Class <T> implements Type, AnnotatedElement {
   }
 
   public Class[] getInterfaces() {
-    if (vmClass.interfaceTable != null) {
-      Classes.link(vmClass);
-
-      int stride = (isInterface() ? 1 : 2);
-      Class[] array = new Class[vmClass.interfaceTable.length / stride];
-      for (int i = 0; i < array.length; ++i) {
-        array[i] = SystemClassLoader.getClass
-          ((VMClass) vmClass.interfaceTable[i * stride]);
+    ClassAddendum addendum = vmClass.addendum;
+    if (addendum != null) {
+      Object[] table = addendum.interfaceTable;
+      if (table != null) {
+        Class[] array = new Class[table.length];
+        for (int i = 0; i < table.length; ++i) {
+          array[i] = SystemClassLoader.getClass((VMClass) table[i]);
+        }
+        return array;
       }
-      return array;
-    } else {
-      return new Class[0];
     }
+    return new Class[0];
   }
+
+  public native Class getEnclosingClass();
+
+  public native Method getEnclosingMethod();
+
+  public native Constructor getEnclosingConstructor();
 
   public T[] getEnumConstants() {
     if (Enum.class.isAssignableFrom(this)) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -14,8 +14,9 @@
 #include <string.h>
 
 #include <sys/stat.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
+#include <io.h>
 #else
 #include <sys/mman.h>
 #include <unistd.h>
@@ -24,48 +25,59 @@
 
 #include <avian/tools/object-writer/tools.h>
 
-extern "C"
-void __cxa_pure_virtual() {
+extern "C" void __cxa_pure_virtual()
+{
   abort();
 }
 
-void* operator new(size_t size) {
+void* operator new(size_t size)
+{
   return malloc(size);
 }
 
-void operator delete(void*) { abort(); }
+void operator delete(void*)
+{
+  abort();
+}
 
 namespace {
 
 using namespace avian::tools;
 using namespace avian::util;
 
-bool
-writeObject(uint8_t* data, size_t size, OutputStream* out, const char* startName,
-            const char* endName, const char* format,
-            const char* architecture, unsigned alignment, bool writable,
-            bool executable)
+bool writeObject(uint8_t* data,
+                 size_t size,
+                 OutputStream* out,
+                 const char* startName,
+                 const char* endName,
+                 const char* format,
+                 const char* architecture,
+                 unsigned alignment,
+                 bool writable,
+                 bool executable)
 {
-  Platform* platform = Platform::getPlatform(PlatformInfo(PlatformInfo::formatFromString(format), PlatformInfo::archFromString(architecture)));
+  Platform* platform = Platform::getPlatform(
+      PlatformInfo(PlatformInfo::formatFromString(format),
+                   PlatformInfo::archFromString(architecture)));
 
-  if(!platform) {
+  if (!platform) {
     fprintf(stderr, "unsupported platform: %s/%s\n", format, architecture);
     return false;
   }
 
-  SymbolInfo symbols[] = {
-    SymbolInfo(0, startName),
-    SymbolInfo(size, endName)
-  };
+  SymbolInfo symbols[] = {SymbolInfo(0, startName), SymbolInfo(size, endName)};
 
-  unsigned accessFlags = (writable ? Platform::Writable : 0) | (executable ? Platform::Executable : 0);
+  unsigned accessFlags = (writable ? Platform::Writable : 0)
+                         | (executable ? Platform::Executable : 0);
 
-  return platform->writeObject(out, Slice<SymbolInfo>(symbols, 2), Slice<const uint8_t>(data, size), accessFlags, alignment);
-
+  return platform->writeObject(out,
+                               Slice<SymbolInfo>(symbols, 2),
+                               Slice<const uint8_t>(data, size),
+                               accessFlags,
+                               alignment);
 }
 
-void
-usageAndExit(const char* name)
+void usageAndExit(const char* name)
 {
   fprintf(stderr,
           "usage: %s <input file> <output file> <start name> <end name> "
@@ -75,12 +87,11 @@ usageAndExit(const char* name)
   exit(-1);
 }
 
-} // namespace
+}  // namespace
 
-int
-main(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
-  if (argc < 7 or argc > 10) {
+  if (argc < 7 || argc > 10) {
     usageAndExit(argv[0]);
   }
 
@@ -109,28 +120,18 @@ main(int argc, const char** argv)
     struct stat s;
     int r = fstat(fd, &s);
     if (r != -1) {
-#ifdef WIN32
+#ifdef _WIN32
       HANDLE fm;
-      HANDLE h = (HANDLE) _get_osfhandle (fd);
+      HANDLE h = (HANDLE)_get_osfhandle(fd);
 
-      fm = CreateFileMapping(
-               h,
-               NULL,
-               PAGE_READONLY,
-               0,
-               0,
-               NULL);
-      data = static_cast<uint8_t*>(MapViewOfFile(
-                fm,
-                FILE_MAP_READ,
-                0,
-                0,
-                s.st_size));
+      fm = CreateFileMapping(h, NULL, PAGE_READONLY, 0, 0, NULL);
+      data = static_cast<uint8_t*>(
+          MapViewOfFile(fm, FILE_MAP_READ, 0, 0, s.st_size));
 
       CloseHandle(fm);
 #else
-      data = static_cast<uint8_t*>
-        (mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
+      data = static_cast<uint8_t*>(
+          mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
 #endif
       size = s.st_size;
     }
@@ -142,14 +143,21 @@ main(int argc, const char** argv)
   if (data) {
     FileOutputStream out(argv[2]);
     if (out.isValid()) {
-      success = writeObject
-        (data, size, &out, argv[3], argv[4], argv[5], argv[6], alignment,
-         writable, executable);
+      success = writeObject(data,
+                            size,
+                            &out,
+                            argv[3],
+                            argv[4],
+                            argv[5],
+                            argv[6],
+                            alignment,
+                            writable,
+                            executable);
     } else {
       fprintf(stderr, "unable to open %s\n", argv[2]);
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     UnmapViewOfFile(data);
 #else
     munmap(data, size);

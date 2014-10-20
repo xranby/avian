@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -21,6 +21,8 @@ public class ClassAddendum extends Addendum {
    * extended by that class.
    */
   public int declaredMethodCount;
-  public Object enclosingClass;
-  public Object enclosingMethod;
+
+  public byte[] enclosingClass;
+
+  public Pair enclosingMethod;
 }
