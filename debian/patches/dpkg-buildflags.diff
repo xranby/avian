@@ -1,10 +1,10 @@
-Index: avian_0.6+20121011/makefile
+Index: avian/makefile
 ===================================================================
---- avian_0.6+20121011.orig/makefile	2012-10-11 10:38:25.496884663 +0200
-+++ avian_0.6+20121011/makefile	2012-10-11 10:38:38.364070502 +0200
-@@ -227,6 +227,9 @@
- soname-flag = -Wl,-soname -Wl,$(so-prefix)jvm$(so-suffix)
- version-script-flag = -Wl,--version-script=openjdk.ld
+--- avian.orig/makefile	2014-10-20 16:32:54.523914107 +0200
++++ avian/makefile	2014-10-20 16:32:54.519914080 +0200
+@@ -423,6 +423,9 @@
+ 
+ lflags = $(common-lflags) -lpthread -ldl
  
 +cflags += $(DPKG_CFLAGS)
 +lflags += $(DPKG_LFLAGS)
