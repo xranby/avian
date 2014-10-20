@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -19,30 +19,32 @@
 #include <avian/util/runtime-array.h>
 
 #if (defined __MINGW32__) || (defined _MSC_VER)
-#  define PATH_SEPARATOR ';'
+#define PATH_SEPARATOR ';'
 #else
-#  define PATH_SEPARATOR ':'
+#define PATH_SEPARATOR ':'
 #endif
 
 #ifdef _MSC_VER
 
-#  define not !
-#  define or ||
-#  define and &&
-#  define xor ^
+#define not!
+#define or ||
+#define and &&
+#define xor ^
 
-#endif // not _MSC_VER
+#endif  // not _MSC_VER
 
 #ifdef BOOT_LIBRARY
 
 // since we aren't linking against libstdc++, we must implement this
 // ourselves:
-extern "C" void __cxa_pure_virtual(void) { abort(); }
+extern "C" void __cxa_pure_virtual(void)
+{
+  abort();
+}
 
 // we link against a System implmentation, which requires this at link
 // time, but it should not be used at runtime:
-extern "C" uint64_t
-vmNativeCall(void*, void*, unsigned, unsigned)
+extern "C" uint64_t vmNativeCall(void*, void*, unsigned, unsigned)
 {
   abort();
   // abort is not declared __declspec(noreturn) on MSVC, so we have to
@@ -50,34 +52,33 @@ vmNativeCall(void*, void*, unsigned, unsigned)
   return 0;
 }
 
-#endif // BOOT_LIBRARY
+#endif  // BOOT_LIBRARY
 
 namespace {
 
-const char*
-mainClass(const char* jar)
+const char* mainClass(const char* jar)
 {
   using namespace vm;
 
   System* system = makeSystem();
 
-  class MyAllocator : public avian::util::Allocator {
+  class MyAllocator : public avian::util::Alloc {
    public:
-    MyAllocator(System* s): s(s) { }
-
-    virtual void* tryAllocate(unsigned size) {
-      return s->tryAllocate(size);
+    MyAllocator(System* s) : s(s)
+    {
     }
 
-    virtual void* allocate(unsigned size) {
-      void* p = tryAllocate(size);
+    virtual void* allocate(size_t size)
+    {
+      void* p = s->tryAllocate(size);
       if (p == 0) {
         abort(s);
       }
       return p;
     }
 
-    virtual void free(const void* p, unsigned) {
+    virtual void free(const void* p, size_t)
+    {
       s->free(p);
     }
 
@@ -94,11 +95,12 @@ mainClass(const char* jar)
     unsigned length;
     while (readLine(region->start(), region->length(), &start, &length)) {
       const unsigned PrefixLength = 12;
-      if (strncasecmp("Main-Class: ", reinterpret_cast<const char*>
-                      (region->start() + start), PrefixLength) == 0)
-      {
+      if (strncasecmp("Main-Class: ",
+                      reinterpret_cast<const char*>(region->start() + start),
+                      PrefixLength) == 0) {
         result = static_cast<char*>(malloc(length + 1 - PrefixLength));
-        memcpy(result, region->start() + start + PrefixLength,
+        memcpy(result,
+               region->start() + start + PrefixLength,
                length - PrefixLength);
         result[length - PrefixLength] = 0;
         break;
@@ -116,26 +118,26 @@ mainClass(const char* jar)
   return result;
 }
 
-void
-usageAndExit(const char* name)
+void usageAndExit(const char* name)
 {
-  fprintf
-    (stderr, "usage: %s\n"
-     "\t[{-cp|-classpath} <classpath>]\n"
-     "\t[-Xmx<maximum heap size>]\n"
-     "\t[-Xss<maximum stack size>]\n"
-     "\t[-Xbootclasspath/p:<classpath to prepend to bootstrap classpath>]\n"
-     "\t[-Xbootclasspath:<bootstrap classpath>]\n"
-     "\t[-Xbootclasspath/a:<classpath to append to bootstrap classpath>]\n"
-     "\t[-D<property name>=<property value> ...]\n"
-     "\t{<class name>|-jar <app jar>} [<argument> ...]\n", name);
+  fprintf(
+      stderr,
+      "usage: %s\n"
+      "\t[{-cp|-classpath} <classpath>]\n"
+      "\t[-Xmx<maximum heap size>]\n"
+      "\t[-Xss<maximum stack size>]\n"
+      "\t[-Xbootclasspath/p:<classpath to prepend to bootstrap classpath>]\n"
+      "\t[-Xbootclasspath:<bootstrap classpath>]\n"
+      "\t[-Xbootclasspath/a:<classpath to append to bootstrap classpath>]\n"
+      "\t[-D<property name>=<property value> ...]\n"
+      "\t{<class name>|-jar <app jar>} [<argument> ...]\n",
+      name);
   exit(-1);
 }
 
-} // namespace
+}  // namespace
 
-int
-main(int ac, const char** av)
+int main(int ac, const char** av)
 {
   JavaVMInitArgs vmArgs;
   vmArgs.version = JNI_VERSION_1_2;
@@ -149,23 +151,21 @@ main(int ac, const char** av)
   const char* classpath = ".";
 
   for (int i = 1; i < ac; ++i) {
-    if (strcmp(av[i], "-cp") == 0
-        or strcmp(av[i], "-classpath") == 0)
-    {
-      if (i + 1 == ac) usageAndExit(av[0]);
+    if (strcmp(av[i], "-cp") == 0 or strcmp(av[i], "-classpath") == 0) {
+      if (i + 1 == ac)
+        usageAndExit(av[0]);
       classpath = av[++i];
-    } else if (strcmp(av[i], "-jar") == 0)
-    {
-      if (i + 1 == ac) usageAndExit(av[0]);
+    } else if (strcmp(av[i], "-jar") == 0) {
+      if (i + 1 == ac)
+        usageAndExit(av[0]);
       jar = av[++i];
-    } else if (strncmp(av[i], "-X", 2) == 0
-               or strncmp(av[i], "-D", 2) == 0)
-    {
-      ++ vmArgs.nOptions;
-    } else if (strcmp(av[i], "-client") == 0
-               or strcmp(av[i], "-server") == 0)
-    {
+    } else if (strncmp(av[i], "-X", 2) == 0 or strncmp(av[i], "-D", 2) == 0) {
+      ++vmArgs.nOptions;
+    } else if (strcmp(av[i], "-client") == 0 or strcmp(av[i], "-server") == 0) {
       // ignore
+    } else if (strcmp(av[i], "-version") == 0) {
+      fprintf(stderr, "Avian " AVIAN_VERSION "\n");
+      exit(0);
     } else {
       if (jar == 0) {
         class_ = av[i++];
@@ -180,7 +180,7 @@ main(int ac, const char** av)
 
   if (jar) {
     classpath = jar;
-    
+
     class_ = mainClass(jar);
 
     if (class_ == 0) {
@@ -190,7 +190,7 @@ main(int ac, const char** av)
   }
 
 #ifdef BOOT_LIBRARY
-  ++ vmArgs.nOptions;
+  ++vmArgs.nOptions;
 #endif
 
 #ifdef BOOT_IMAGE
@@ -198,7 +198,7 @@ main(int ac, const char** av)
 #endif
 
 #ifdef BOOT_BUILTINS
-  ++ vmArgs.nOptions;
+  ++vmArgs.nOptions;
 #endif
 
   RUNTIME_ARRAY(JavaVMOption, options, vmArgs.nOptions);
@@ -208,27 +208,27 @@ main(int ac, const char** av)
 
 #ifdef BOOT_IMAGE
   vmArgs.options[optionIndex++].optionString
-    = const_cast<char*>("-Davian.bootimage=bootimageBin");
+      = const_cast<char*>("-Davian.bootimage=bootimageBin");
 
   vmArgs.options[optionIndex++].optionString
-    = const_cast<char*>("-Davian.codeimage=codeimageBin");
+      = const_cast<char*>("-Davian.codeimage=codeimageBin");
 #endif
 
 #ifdef BOOT_LIBRARY
   vmArgs.options[optionIndex++].optionString
-    = const_cast<char*>("-Davian.bootstrap=" BOOT_LIBRARY);
+      = const_cast<char*>("-Davian.bootstrap=" BOOT_LIBRARY);
 #endif
 
 #ifdef BOOT_BUILTINS
   vmArgs.options[optionIndex++].optionString
-    = const_cast<char*>("-Davian.builtins=" BOOT_BUILTINS);
+      = const_cast<char*>("-Davian.builtins=" BOOT_BUILTINS);
 #endif
 
 #define CLASSPATH_PROPERTY "-Djava.class.path="
 
   unsigned classpathSize = strlen(classpath);
-  unsigned classpathPropertyBufferSize
-    = sizeof(CLASSPATH_PROPERTY) + classpathSize;
+  unsigned classpathPropertyBufferSize = sizeof(CLASSPATH_PROPERTY)
+                                         + classpathSize;
 
   RUNTIME_ARRAY(char, classpathPropertyBuffer, classpathPropertyBufferSize);
   memcpy(RUNTIME_ARRAY_BODY(classpathPropertyBuffer),
@@ -240,12 +240,10 @@ main(int ac, const char** av)
          classpathSize + 1);
 
   vmArgs.options[optionIndex++].optionString
-    = RUNTIME_ARRAY_BODY(classpathPropertyBuffer);
+      = RUNTIME_ARRAY_BODY(classpathPropertyBuffer);
 
   for (int i = 1; i < ac; ++i) {
-    if (strncmp(av[i], "-X", 2) == 0
-        or strncmp(av[i], "-D", 2) == 0)
-    {
+    if (strncmp(av[i], "-X", 2) == 0 or strncmp(av[i], "-D", 2) == 0) {
       vmArgs.options[optionIndex++].optionString = const_cast<char*>(av[i]);
     }
   }
@@ -278,7 +276,7 @@ main(int ac, const char** av)
           for (int i = 0; i < argc; ++i) {
             e->SetObjectArrayElement(a, i, e->NewStringUTF(argv[i]));
           }
-          
+
           e->CallStaticVoidMethod(c, m, a);
         }
       }

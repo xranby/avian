@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -35,11 +35,11 @@ class FrameResource;
 class ConstantPoolNode;
 
 class ForkState;
-class MySubroutine;
 class Block;
 
-template<class T>
-List<T>* reverseDestroy(List<T>* cell) {
+template <class T>
+List<T>* reverseDestroy(List<T>* cell)
+{
   List<T>* previous = 0;
   while (cell) {
     List<T>* next = cell->next;
@@ -50,9 +50,53 @@ List<T>* reverseDestroy(List<T>* cell) {
   return previous;
 }
 
+class LogicalCode {
+ private:
+  util::Slice<LogicalInstruction*> logicalCode;
+
+ public:
+  LogicalCode() : logicalCode(0, 0)
+  {
+  }
+
+  void init(vm::Zone* zone, size_t count)
+  {
+    // leave room for logical instruction -1
+    size_t realCount = count + 1;
+
+    logicalCode
+        = util::Slice<LogicalInstruction*>::allocAndSet(zone, realCount, 0);
+  }
+
+  void extend(vm::Zone* zone, size_t more)
+  {
+    util::Slice<LogicalInstruction*> newCode
+        = logicalCode.cloneAndSet(zone, logicalCode.count + more, 0);
+
+    for (size_t i = 0; i < logicalCode.count; i++) {
+      assertT((vm::System*)0, logicalCode[i] == newCode[i]);
+    }
+
+    logicalCode = newCode;
+  }
+
+  size_t count()
+  {
+    return logicalCode.count - 1;
+  }
+
+  LogicalInstruction*& operator[](int index)
+  {
+    // leave room for logical instruction -1
+    return logicalCode[index + 1];
+  }
+};
+
 class Context {
  public:
-  Context(vm::System* system, Assembler* assembler, vm::Zone* zone,
+  Context(vm::System* system,
+          Assembler* assembler,
+          vm::Zone* zone,
           Compiler::Client* client);
 
   vm::System* system;
@@ -64,7 +108,7 @@ class Context {
   Local* locals;
   List<Value*>* saved;
   Event* predecessor;
-  LogicalInstruction** logicalCode;
+  LogicalCode logicalCode;
   const RegisterFile* regFile;
   RegisterAllocator regAlloc;
   RegisterResource* registerResources;
@@ -76,29 +120,30 @@ class Context {
   Event* firstEvent;
   Event* lastEvent;
   ForkState* forkState;
-  MySubroutine* subroutine;
   Block* firstBlock;
   int logicalIp;
   unsigned constantCount;
-  unsigned logicalCodeLength;
   unsigned parameterFootprint;
   unsigned localFootprint;
   unsigned machineCodeSize;
   unsigned alignedFrameSize;
   unsigned availableGeneralRegisterCount;
+  ir::TargetInfo targetInfo;
 };
 
-inline Aborter* getAborter(Context* c) {
+inline Aborter* getAborter(Context* c)
+{
   return c->system;
 }
 
-template<class T>
-List<T>* cons(Context* c, const T& value, List<T>* next) {
+template <class T>
+List<T>* cons(Context* c, const T& value, List<T>* next)
+{
   return new (c->zone) List<T>(value, next);
 }
 
-} // namespace compiler
-} // namespace codegen
-} // namespace avian
+}  // namespace compiler
+}  // namespace codegen
+}  // namespace avian
 
-#endif // AVIAN_CODEGEN_COMPILER_CONTEXT_H
+#endif  // AVIAN_CODEGEN_COMPILER_CONTEXT_H

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -18,16 +18,17 @@ namespace util {
 
 template <class T>
 class List {
-public:
-  List(const T& item, List<T>* next):
-    item(item),
-    next(next) {}
+ public:
+  List(const T& item, List<T>* next) : item(item), next(next)
+  {
+  }
 
-  unsigned count() {
+  unsigned count()
+  {
     unsigned count = 0;
     List<T>* c = this;
     while (c) {
-      ++ count;
+      ++count;
       c = c->next;
     }
     return count;

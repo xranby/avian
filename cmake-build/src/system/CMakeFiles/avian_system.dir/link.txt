@@ -1,0 +1,2 @@
+/usr/bin/ar cr libavian_system.a  CMakeFiles/avian_system.dir/posix.cpp.o CMakeFiles/avian_system.dir/posix/crash.cpp.o
+/usr/bin/ranlib libavian_system.a

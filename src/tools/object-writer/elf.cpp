@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -49,7 +49,6 @@
 #define EM_386 3
 #define EM_X86_64 62
 #define EM_ARM 40
-#define EM_PPC 20
 
 #define SHT_PROGBITS 1
 #define SHT_SYMTAB 2
@@ -65,7 +64,7 @@
 
 #define STV_DEFAULT 0
 
-#define SYMBOL_INFO(bind, type) (((bind) << 4) + ((type) & 0xf))
+#define SYMBOL_INFO(bind, type) (((bind) << 4) + ((type)&0xf))
 
 #define OSABI ELFOSABI_SYSV
 
@@ -74,7 +73,7 @@ namespace {
 using namespace avian::tools;
 using namespace avian::util;
 
-template<class AddrTy>
+template <class AddrTy>
 struct ElfTypes {
   typedef uint16_t Half;
   typedef uint32_t Word;
@@ -86,10 +85,10 @@ struct ElfTypes {
   static const unsigned BytesPerWord = sizeof(AddrTy);
 };
 
-template<class AddrTy>
+template <class AddrTy>
 struct Symbol_Ty;
 
-template<>
+template <>
 struct Symbol_Ty<uint64_t> {
   typedef ElfTypes<uint64_t> Elf;
 
@@ -101,7 +100,7 @@ struct Symbol_Ty<uint64_t> {
   Elf::Xword st_size;
 };
 
-template<>
+template <>
 struct Symbol_Ty<uint32_t> {
   typedef ElfTypes<uint32_t> Elf;
 
@@ -121,23 +120,22 @@ using avian::endian::Endianness;
 #define V4 Endianness<TargetLittleEndian>::v4
 #define VANY Endianness<TargetLittleEndian>::vAny
 
-
-unsigned getElfPlatform(PlatformInfo::Architecture arch) {
-  switch(arch) {
+unsigned getElfPlatform(PlatformInfo::Architecture arch)
+{
+  switch (arch) {
   case PlatformInfo::x86_64:
     return EM_X86_64;
   case PlatformInfo::x86:
     return EM_386;
   case PlatformInfo::Arm:
     return EM_ARM;
-  case PlatformInfo::PowerPC:
-    return EM_PPC;
   default:
     return ~0;
   }
 }
 
-const char* getSectionName(unsigned accessFlags, unsigned& sectionFlags) {
+const char* getSectionName(unsigned accessFlags, unsigned& sectionFlags)
+{
   sectionFlags = SHF_ALLOC;
   if (accessFlags & Platform::Writable) {
     if (accessFlags & Platform::Executable) {
@@ -155,10 +153,9 @@ const char* getSectionName(unsigned accessFlags, unsigned& sectionFlags) {
   }
 }
 
-template<class AddrTy, bool TargetLittleEndian = true>
+template <class AddrTy, bool TargetLittleEndian = true>
 class ElfPlatform : public Platform {
-public:
-
+ public:
   typedef ElfTypes<AddrTy> Elf;
   static const unsigned Class = Elf::BytesPerWord / 4;
 
@@ -194,16 +191,19 @@ public:
 
   typedef Symbol_Ty<AddrTy> Symbol;
 
-  static const unsigned Encoding = TargetLittleEndian ? ELFDATA2LSB : ELFDATA2MSB;
+  static const unsigned Encoding = TargetLittleEndian ? ELFDATA2LSB
+                                                      : ELFDATA2MSB;
 
   const unsigned machine;
 
-  ElfPlatform(PlatformInfo::Architecture arch):
-    Platform(PlatformInfo(PlatformInfo::Elf, arch)),
-    machine(getElfPlatform(arch)) {}
+  ElfPlatform(PlatformInfo::Architecture arch)
+      : Platform(PlatformInfo(PlatformInfo::Elf, arch)),
+        machine(getElfPlatform(arch))
+  {
+  }
 
   class FileWriter {
-  public:
+   public:
     unsigned sectionCount;
     unsigned sectionStringTableSectionNumber;
 
@@ -212,9 +212,8 @@ public:
     FileHeader header;
     StringTable strings;
 
-    FileWriter(unsigned machine):
-      sectionCount(0),
-      dataOffset(sizeof(FileHeader))
+    FileWriter(unsigned machine)
+        : sectionCount(0), dataOffset(sizeof(FileHeader))
     {
       memset(&header, 0, sizeof(FileHeader));
       header.e_ident[EI_MAG0] = V1(ELFMAG0);
@@ -239,7 +238,8 @@ public:
       header.e_shentsize = V2(sizeof(SectionHeader));
     }
 
-    void writeHeader(OutputStream* out) {
+    void writeHeader(OutputStream* out)
+    {
       header.e_shnum = V2(sectionCount);
       header.e_shstrndx = V2(sectionStringTableSectionNumber);
       out->writeChunk(&header, sizeof(FileHeader));
@@ -247,18 +247,14 @@ public:
   };
 
   class SectionWriter {
-  public:
+   public:
     FileWriter& file;
     String name;
     SectionHeader header;
     const size_t* dataSize;
     const uint8_t* const* data;
 
-    SectionWriter(FileWriter& file):
-      file(file),
-      name(""),
-      dataSize(0),
-      data(0)
+    SectionWriter(FileWriter& file) : file(file), name(""), dataSize(0), data(0)
     {
       memset(&header, 0, sizeof(SectionHeader));
       file.sectionCount++;
@@ -267,24 +263,19 @@ public:
       header.sh_name = V4(nameOffset);
     }
 
-    SectionWriter(
-        FileWriter& file,
-        const char* chname,
-        unsigned type,
-        AddrTy flags,
-        unsigned alignment,
-        AddrTy addr,
-        const uint8_t* const* data,
-        size_t* dataSize,
-        size_t entsize = 0,
-        unsigned link = 0):
-
-      file(file),
-      name(chname),
-      dataSize(dataSize),
-      data(data)
+    SectionWriter(FileWriter& file,
+                  const char* chname,
+                  unsigned type,
+                  AddrTy flags,
+                  unsigned alignment,
+                  AddrTy addr,
+                  const uint8_t* const* data,
+                  size_t* dataSize,
+                  size_t entsize = 0,
+                  unsigned link = 0)
+        : file(file), name(chname), dataSize(dataSize), data(data)
     {
-      if(strcmp(chname, ".shstrtab") == 0) {
+      if (strcmp(chname, ".shstrtab") == 0) {
         file.sectionStringTableSectionNumber = file.sectionCount;
       }
       file.sectionCount++;
@@ -303,8 +294,9 @@ public:
       header.sh_entsize = VANY(static_cast<AddrTy>(entsize));
     }
 
-    void writeHeader(OutputStream* out) {
-      if(dataSize) {
+    void writeHeader(OutputStream* out)
+    {
+      if (dataSize) {
         header.sh_offset = VANY(file.dataOffset);
         header.sh_size = VANY(static_cast<AddrTy>(*dataSize));
         file.dataOffset += *dataSize;
@@ -313,17 +305,20 @@ public:
       out->writeChunk(&header, sizeof(SectionHeader));
     }
 
-    void writeData(OutputStream* out) {
-      if(data) {
+    void writeData(OutputStream* out)
+    {
+      if (data) {
         out->writeChunk(*data, *dataSize);
       }
     }
-
-
   };
 
-  virtual bool writeObject(OutputStream* out, Slice<SymbolInfo> symbols, Slice<const uint8_t> data, unsigned accessFlags, unsigned alignment) {
-
+  virtual bool writeObject(OutputStream* out,
+                           Slice<SymbolInfo> symbols,
+                           Slice<const uint8_t> data,
+                           unsigned accessFlags,
+                           unsigned alignment)
+  {
     unsigned sectionFlags;
     const char* sectionName = getSectionName(accessFlags, sectionFlags);
 
@@ -335,18 +330,46 @@ public:
     const int bodySectionNumber = 1;
     const int stringTableSectionNumber = 3;
 
-    SectionWriter sections[] = {
-      SectionWriter(file), // null section
-      SectionWriter(file, sectionName, SHT_PROGBITS, sectionFlags, alignment, 0, &data.items, &data.count), // body section
-      SectionWriter(file, ".shstrtab", SHT_STRTAB, 0, 1, 0, &file.strings.data, &file.strings.length),
-      SectionWriter(file, ".strtab", SHT_STRTAB, 0, 1, 0, &symbolStringTable.data, &symbolStringTable.length),
-      SectionWriter(file, ".symtab", SHT_SYMTAB, 0, 8, 0, &symbolTable.data, &symbolTable.length, sizeof(Symbol), stringTableSectionNumber)
-    };
+    SectionWriter sections[] = {SectionWriter(file),  // null section
+                                SectionWriter(file,
+                                              sectionName,
+                                              SHT_PROGBITS,
+                                              sectionFlags,
+                                              alignment,
+                                              0,
+                                              &data.items,
+                                              &data.count),  // body section
+                                SectionWriter(file,
+                                              ".shstrtab",
+                                              SHT_STRTAB,
+                                              0,
+                                              1,
+                                              0,
+                                              &file.strings.data,
+                                              &file.strings.length),
+                                SectionWriter(file,
+                                              ".strtab",
+                                              SHT_STRTAB,
+                                              0,
+                                              1,
+                                              0,
+                                              &symbolStringTable.data,
+                                              &symbolStringTable.length),
+                                SectionWriter(file,
+                                              ".symtab",
+                                              SHT_SYMTAB,
+                                              0,
+                                              8,
+                                              0,
+                                              &symbolTable.data,
+                                              &symbolTable.length,
+                                              sizeof(Symbol),
+                                              stringTableSectionNumber)};
 
     // for some reason, string tables require a null first element...
     symbolStringTable.add("");
 
-    for(SymbolInfo* sym = symbols.begin(); sym != symbols.end(); sym++) {
+    for (SymbolInfo* sym = symbols.begin(); sym != symbols.end(); sym++) {
       size_t nameOffset = symbolStringTable.add(sym->name);
 
       Symbol symbolStruct;
@@ -361,11 +384,11 @@ public:
 
     file.writeHeader(out);
 
-    for(unsigned i = 0; i < file.sectionCount; i++) {
+    for (unsigned i = 0; i < file.sectionCount; i++) {
       sections[i].writeHeader(out);
     }
 
-    for(unsigned i = 0; i < file.sectionCount; i++) {
+    for (unsigned i = 0; i < file.sectionCount; i++) {
       sections[i].writeData(out);
     }
 
@@ -375,7 +398,6 @@ public:
 
 ElfPlatform<uint32_t> elfX86Platform(PlatformInfo::x86);
 ElfPlatform<uint32_t> elfArmPlatform(PlatformInfo::Arm);
-ElfPlatform<uint32_t, false> elfPowerPCPlatform(PlatformInfo::PowerPC);
 ElfPlatform<uint64_t> elfX86_64Platform(PlatformInfo::x86_64);
 
-} // namespace
+}  // namespace

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -7,7 +7,6 @@
 
    There is NO WARRANTY for this software.  See license.txt for
    details. */
-
 
 #include <stdio.h>
 
@@ -19,17 +18,14 @@
 
 using namespace avian::util;
 
-TEST(ArgParser) {
+TEST(ArgParser)
+{
   {
     ArgParser parser;
     Arg arg1(parser, false, "arg1", "<value>");
     Arg required2(parser, true, "required2", "<value>");
-    const char* args[] = {
-      "myExecutable",
-      "-arg1", "myValue1",
-      "-required2", "myRequired2",
-      0
-    };
+    const char* args[]
+        = {"myExecutable", "-arg1", "myValue1", "-required2", "myRequired2", 0};
     assertTrue(parser.parse(sizeof(args) / sizeof(char*) - 1, args));
     assertEqual("myValue1", arg1.value);
     assertEqual("myRequired2", required2.value);
@@ -39,12 +35,7 @@ TEST(ArgParser) {
     ArgParser parser;
     Arg arg1(parser, false, "arg1", "<value>");
     Arg required2(parser, true, "required2", "<value>");
-    const char* args[] = {
-      "myExecutable",
-      "-arg1", "myValue1",
-      "-required2",
-      0
-    };
+    const char* args[] = {"myExecutable", "-arg1", "myValue1", "-required2", 0};
     assertFalse(parser.parse(sizeof(args) / sizeof(char*) - 1, args));
   }
 
@@ -52,11 +43,7 @@ TEST(ArgParser) {
     ArgParser parser;
     Arg arg1(parser, false, "arg1", "<value>");
     Arg required2(parser, true, "required2", "<value>");
-    const char* args[] = {
-      "myExecutable",
-      "-arg1", "myValue1",
-      0
-    };
+    const char* args[] = {"myExecutable", "-arg1", "myValue1", 0};
     assertFalse(parser.parse(sizeof(args) / sizeof(char*) - 1, args));
   }
 }

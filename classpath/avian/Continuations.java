@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -302,11 +302,11 @@ public class Continuations {
   }
 
   private static class UnwindResult {
-    public final Callback continuation;
+    public final Continuation continuation;
     public final Object result;
     public final Throwable exception;
 
-    public UnwindResult(Callback continuation, Object result,
+    public UnwindResult(Continuation continuation, Object result,
                         Throwable exception)
     {
       this.continuation = continuation;

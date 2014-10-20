@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -21,7 +21,8 @@ namespace system {
 // order to trigger the crash dump logic.
 NO_RETURN void crash();
 
-// Registrar for unix-like "signals" (implemented with structured exceptions on windows).
+// Registrar for unix-like "signals" (implemented with structured exceptions on
+// windows).
 // TODO: remove dependence on generated code having a well-known "thread"
 // register. Use a thread-local variable instead.
 class SignalRegistrar {
@@ -40,7 +41,6 @@ class SignalRegistrar {
     // "Segmentation fault" exceptions (mostly null pointer dereference, but
     // generally access to any non-mapped memory)
     SegFault,
-
     DivideByZero,
   };
 
@@ -72,11 +72,10 @@ class SignalRegistrar {
   struct Data;
 
  private:
-
   Data* data;
 };
 
-} // namespace system
-} // namespace avian
+}  // namespace system
+}  // namespace avian
 
 #endif

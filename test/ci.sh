@@ -2,13 +2,55 @@
 
 set -e
 
-make ${flags} jdk-test
-make ${flags} test
-make ${flags} mode=debug test
-make ${flags} process=interpret test
-# bootimage and openjdk builds without openjdk-src don't work:
-if [ -z "${openjdk}" ]; then
-  make ${flags} bootimage=true test
-fi
-make ${flags} tails=true continuations=true test
-make ${flags} codegen-targets=all
+root_dir=$(pwd)
+
+run() {
+  echo '==============================================='
+  if [ ! $(pwd) = ${root_dir} ]; then
+    printf "cd $(pwd); "
+  fi
+  echo "${@}"
+  echo '==============================================='
+  "${@}"
+}
+
+run_cmake() {
+  mkdir -p cmake-build
+  rm -rf cmake-build/*
+  cd  cmake-build
+  run cmake ${@} ..
+  run make -j4 check
+  cd ..
+}
+
+flags="${@}"
+
+has_flag() {
+  local arg=$1
+  for f in ${flags}; do
+    local key=$(echo $f | awk -F '=' '{print $1}')
+    if [ ${key} = ${arg} ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+make_target=test
+
+test `uname -o` = "Cygwin" || run_cmake -DCMAKE_BUILD_TYPE=Debug
+
+run make jdk-test
+run make ${flags} ${make_target}
+run make ${flags} mode=debug ${make_target}
+run make ${flags} process=interpret ${make_target}
+
+(has_flag openjdk-src || ! has_flag openjdk) && \
+  run make ${flags} mode=debug bootimage=true ${make_target} && \
+  run make ${flags} bootimage=true ${make_target}
+
+! has_flag openjdk && \
+  run make ${flags} openjdk=$JAVA_HOME ${make_target}
+
+run make ${flags} tails=true continuations=true heapdump=true ${make_target}
+run make ${flags} codegen-targets=all

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -20,4 +20,4 @@
 #define DOUBLE_TYPE 6
 #define POINTER_TYPE 7
 
-#endif//TYPES_H
+#endif  // TYPES_H

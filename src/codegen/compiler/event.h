@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -33,25 +33,41 @@ class Event {
 
   virtual void compile(Context* c) = 0;
 
-  virtual bool isBranch() { return false; }
+  virtual bool isBranch()
+  {
+    return false;
+  }
 
-  virtual bool allExits() { return false; }
+  virtual bool allExits()
+  {
+    return false;
+  }
 
-  virtual Local* locals() { return localsBefore; }
-
-
+  virtual Local* locals()
+  {
+    return localsBefore;
+  }
 
   void addRead(Context* c, Value* v, Read* r);
 
-  void addRead(Context* c, Value* v, const SiteMask& mask,
-          Value* successor = 0);
+  void addRead(Context* c,
+               Value* v,
+               const SiteMask& mask,
+               Value* successor = 0);
 
-  void addReads(Context* c, Value* v, unsigned size,
-           const SiteMask& lowMask, Value* lowSuccessor,
-           const SiteMask& highMask, Value* highSuccessor);
+  void addReads(Context* c,
+                Value* v,
+                unsigned size,
+                const SiteMask& lowMask,
+                Value* lowSuccessor,
+                const SiteMask& highMask,
+                Value* highSuccessor);
 
-  void addReads(Context* c, Value* v, unsigned size,
-           const SiteMask& lowMask, const SiteMask& highMask);
+  void addReads(Context* c,
+                Value* v,
+                unsigned size,
+                const SiteMask& lowMask,
+                const SiteMask& highMask);
 
   CodePromise* makeCodePromise(Context* c);
 
@@ -82,7 +98,9 @@ class StubReadPair {
 
 class JunctionState {
  public:
-  JunctionState(unsigned frameFootprint): frameFootprint(frameFootprint) { }
+  JunctionState(unsigned frameFootprint) : frameFootprint(frameFootprint)
+  {
+  }
 
   unsigned frameFootprint;
   StubReadPair reads[0];
@@ -90,12 +108,19 @@ class JunctionState {
 
 class Link {
  public:
-  Link(Event* predecessor, Link* nextPredecessor, Event* successor,
-       Link* nextSuccessor, ForkState* forkState):
-    predecessor(predecessor), nextPredecessor(nextPredecessor),
-    successor(successor), nextSuccessor(nextSuccessor), forkState(forkState),
-    junctionState(0)
-  { }
+  Link(Event* predecessor,
+       Link* nextPredecessor,
+       Event* successor,
+       Link* nextSuccessor,
+       ForkState* forkState)
+      : predecessor(predecessor),
+        nextPredecessor(nextPredecessor),
+        successor(successor),
+        nextSuccessor(nextSuccessor),
+        forkState(forkState),
+        junctionState(0)
+  {
+  }
 
   unsigned countPredecessors();
   Link* lastPredecessor();
@@ -109,63 +134,79 @@ class Link {
   JunctionState* junctionState;
 };
 
-Link*
-link(Context* c, Event* predecessor, Link* nextPredecessor, Event* successor,
-     Link* nextSuccessor, ForkState* forkState);
+Link* link(Context* c,
+           Event* predecessor,
+           Link* nextPredecessor,
+           Event* successor,
+           Link* nextSuccessor,
+           ForkState* forkState);
 
-void
-appendCall(Context* c, Value* address, unsigned flags,
-           TraceHandler* traceHandler, Value* result, unsigned resultSize,
-           Stack* argumentStack, unsigned argumentCount,
-           unsigned stackArgumentFootprint);
+void appendCall(Context* c,
+                Value* address,
+                ir::CallingConvention callingConvention,
+                unsigned flags,
+                TraceHandler* traceHandler,
+                Value* result,
+                util::Slice<ir::Value*> arguments);
 
-void
-appendReturn(Context* c, unsigned size, Value* value);
+void appendReturn(Context* c, Value* value);
 
-void
-appendMove(Context* c, lir::BinaryOperation type, unsigned srcSize,
-           unsigned srcSelectSize, Value* src, unsigned dstSize, Value* dst);
+void appendMove(Context* c,
+                lir::BinaryOperation op,
+                unsigned srcSize,
+                unsigned srcSelectSize,
+                Value* src,
+                unsigned dstSize,
+                Value* dst);
 
-void
-appendCombine(Context* c, lir::TernaryOperation type,
-              unsigned firstSize, Value* first,
-              unsigned secondSize, Value* second,
-              unsigned resultSize, Value* result);
+void appendCombine(Context* c,
+                   lir::TernaryOperation op,
+                   Value* first,
+                   Value* second,
+                   Value* result);
 
-void
-appendTranslate(Context* c, lir::BinaryOperation type, unsigned firstSize,
-                Value* first, unsigned resultSize, Value* result);
+void appendTranslate(Context* c,
+                     lir::BinaryOperation op,
+                     Value* first,
+                     Value* result);
 
-void
-appendOperation(Context* c, lir::Operation op);
+void appendOperation(Context* c, lir::Operation op);
 
-void
-appendMemory(Context* c, Value* base, int displacement, Value* index,
-             unsigned scale, Value* result);
+void appendMemory(Context* c,
+                  Value* base,
+                  int displacement,
+                  Value* index,
+                  unsigned scale,
+                  Value* result);
 
-void
-appendBranch(Context* c, lir::TernaryOperation type, unsigned size, Value* first,
-             Value* second, Value* address);
+void appendBranch(Context* c,
+                  lir::TernaryOperation op,
+                  Value* first,
+                  Value* second,
+                  Value* address);
 
-void
-appendJump(Context* c, lir::UnaryOperation type, Value* address, bool exit = false,
-           bool cleanLocals = false);
+void appendJump(Context* c,
+                lir::UnaryOperation op,
+                Value* address,
+                bool exit = false,
+                bool cleanLocals = false);
 
-void
-appendBoundsCheck(Context* c, Value* object, unsigned lengthOffset,
-                  Value* index, intptr_t handler);
+void appendBoundsCheck(Context* c,
+                       Value* object,
+                       unsigned lengthOffset,
+                       Value* index,
+                       intptr_t handler);
 
-void
-appendFrameSite(Context* c, Value* value, int index);
+void appendFrameSite(Context* c, Value* value, int index);
 
-void
-appendSaveLocals(Context* c);
+void appendSaveLocals(Context* c);
 
-void
-appendDummy(Context* c);
+void appendDummy(Context* c);
 
-} // namespace compiler
-} // namespace codegen
-} // namespace avian
+void appendBuddy(Context* c, Value* original, Value* buddy);
 
-#endif // AVIAN_CODEGEN_COMPILER_EVENT_H
+}  // namespace compiler
+}  // namespace codegen
+}  // namespace avian
+
+#endif  // AVIAN_CODEGEN_COMPILER_EVENT_H

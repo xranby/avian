@@ -19,10 +19,10 @@ openjdk-sources = \
 	$(openjdk-src)/share/native/java/lang/Float.c \
 	$(openjdk-src)/share/native/java/lang/Object.c \
 	$(openjdk-src)/share/native/java/lang/Package.c \
-	$(openjdk-src)/share/native/java/lang/ref/Finalizer.c \
+	$(wildcard $(openjdk-src)/share/native/java/lang/ref/Finalizer.c) \
 	$(openjdk-src)/share/native/java/lang/reflect/Array.c \
 	$(openjdk-src)/share/native/java/lang/reflect/Proxy.c \
-	$(openjdk-src)/share/native/java/lang/ResourceBundle.c \
+	$(wildcard $(openjdk-src)/share/native/java/lang/ResourceBundle.c) \
 	$(openjdk-src)/share/native/java/lang/Runtime.c \
 	$(openjdk-src)/share/native/java/lang/SecurityManager.c \
 	$(openjdk-src)/share/native/java/lang/Shutdown.c \
@@ -38,7 +38,7 @@ openjdk-sources = \
 	$(openjdk-src)/share/native/java/net/Inet6Address.c \
 	$(openjdk-src)/share/native/java/nio/Bits.c \
 	$(openjdk-src)/share/native/java/security/AccessController.c \
-	$(openjdk-src)/share/native/java/sql/DriverManager.c \
+	$(wildcard $(openjdk-src)/share/native/java/sql/DriverManager.c) \
 	$(openjdk-src)/share/native/java/util/concurrent/atomic/AtomicLong.c \
 	$(openjdk-src)/share/native/java/util/TimeZone.c \
 	$(openjdk-src)/share/native/java/util/zip/Adler32.c \
@@ -165,7 +165,7 @@ openjdk-cflags = \
 	-DJDK_BUILD_NUMBER=\"0\" \
 	-D_GNU_SOURCE
 
-ifeq ($(platform),darwin)
+ifeq ($(kernel),darwin)
 	openjdk-cflags += \
 		-D_LFS_LARGEFILE=1 \
 		-D_ALLBSD_SOURCE
@@ -250,11 +250,12 @@ else
 		$(openjdk-src)/solaris/native/java/io/FileDescriptor_md.c \
 		$(openjdk-src)/solaris/native/java/io/FileInputStream_md.c \
 		$(openjdk-src)/solaris/native/java/io/FileOutputStream_md.c \
-		$(openjdk-src)/solaris/native/java/io/FileSystem_md.c \
+		$(wildcard $(openjdk-src)/solaris/native/java/io/FileSystem_md.c) \
 		$(openjdk-src)/solaris/native/java/io/io_util_md.c \
 		$(openjdk-src)/solaris/native/java/io/RandomAccessFile_md.c \
 		$(openjdk-src)/solaris/native/java/io/UnixFileSystem_md.c \
 		$(openjdk-src)/solaris/native/java/lang/java_props_md.c \
+		$(wildcard $(openjdk-src)/solaris/native/java/lang/childproc.c) \
 		$(openjdk-src)/solaris/native/java/lang/ProcessEnvironment_md.c \
 		$(openjdk-src)/solaris/native/java/lang/UNIXProcess_md.c \
 		$(openjdk-src)/solaris/native/java/net/net_util_md.c \
@@ -304,7 +305,12 @@ else
 		"-I$(openjdk-src)/solaris/native/sun/nio/ch" \
 		"-I$(openjdk-src)/solaris/javavm/include" \
 		"-I$(openjdk-src)/solaris/hpi/include" \
-		"-I$(openjdk-src)/solaris/native/common/deps"
+		"-I$(openjdk-src)/solaris/native/common/deps" \
+		"-I$(openjdk-src)/solaris/native/common/deps/fontconfig2" \
+		"-I$(openjdk-src)/solaris/native/common/deps/gconf2" \
+		"-I$(openjdk-src)/solaris/native/common/deps/glib2" \
+		"-I$(openjdk-src)/solaris/native/common/deps/gtk2" \
+		"-DX11_PATH=\"/usr/X11R6\""
 
 	ifeq ($(platform),linux)
 		openjdk-sources += \
@@ -323,21 +329,21 @@ else
 			$(shell pkg-config --cflags gconf-2.0)
 	endif
 
-	ifeq ($(platform),darwin)
+	ifeq ($(kernel),darwin)
 		openjdk-sources += \
-			$(openjdk-src)/solaris/native/java/net/bsd_close.c
+			$(openjdk-src)/solaris/native/java/net/bsd_close.c \
+			$(openjdk-src)/macosx/native/sun/nio/ch/KQueueArrayWrapper.c
 
-		ifeq ($(ios),true)
+		ifeq ($(platform),ios)
 			openjdk-local-sources += \
 				$(src)/openjdk/my_java_props_macosx.c
 		else
 			openjdk-sources += \
-				$(openjdk-src)/solaris/native/java/lang/java_props_macosx.c \
-				$(openjdk-src)/macosx/native/sun/nio/ch/KQueueArrayWrapper.c
+				$(openjdk-src)/solaris/native/java/lang/java_props_macosx.c
 		endif
 
 		openjdk-cflags += \
-			-DMACOSX
+			-DMACOSX -x objective-c
 	endif
 endif
 

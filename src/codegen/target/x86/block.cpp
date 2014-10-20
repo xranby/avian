@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -16,21 +16,29 @@ namespace avian {
 namespace codegen {
 namespace x86 {
 
-unsigned
-padding(AlignmentPadding* p, unsigned index, unsigned offset, AlignmentPadding* limit);
+unsigned padding(AlignmentPadding* p,
+                 unsigned index,
+                 unsigned offset,
+                 AlignmentPadding* limit);
 
-MyBlock::MyBlock(unsigned offset):
-  next(0), firstPadding(0), lastPadding(0), offset(offset), start(~0),
-  size(0)
-{ }
+MyBlock::MyBlock(unsigned offset)
+    : next(0),
+      firstPadding(0),
+      lastPadding(0),
+      offset(offset),
+      start(~0),
+      size(0)
+{
+}
 
-unsigned MyBlock::resolve(unsigned start, Assembler::Block* next) {
+unsigned MyBlock::resolve(unsigned start, Assembler::Block* next)
+{
   this->start = start;
   this->next = static_cast<MyBlock*>(next);
 
   return start + size + padding(firstPadding, start, offset, lastPadding);
 }
 
-} // namespace x86
-} // namespace codegen
-} // namespace avian
+}  // namespace x86
+}  // namespace codegen
+}  // namespace avian

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -13,11 +13,19 @@
 #ifdef inflateInit2
 #undef inflateInit2
 #define inflateInit2(strm, windowBits) \
-        inflateInit2_((strm), (windowBits), ZLIB_VERSION, static_cast<int>(sizeof(z_stream)))
+  inflateInit2_(                       \
+      (strm), (windowBits), ZLIB_VERSION, static_cast<int>(sizeof(z_stream)))
 #endif
 
 #ifdef deflateInit2
 #undef deflateInit2
 #define deflateInit2(strm, level, windowBits) \
-        deflateInit2_((strm), (level), Z_DEFLATED, (windowBits), 8, Z_DEFAULT_STRATEGY, ZLIB_VERSION, static_cast<int>(sizeof(z_stream)))
+  deflateInit2_((strm),                       \
+                (level),                      \
+                Z_DEFLATED,                   \
+                (windowBits),                 \
+                8,                            \
+                Z_DEFAULT_STRATEGY,           \
+                ZLIB_VERSION,                 \
+                static_cast<int>(sizeof(z_stream)))
 #endif

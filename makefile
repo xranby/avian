@@ -1,28 +1,27 @@
 MAKEFLAGS = -s
 
 name = avian
-version = 0.7
+version := $(shell grep version gradle.properties | cut -d'=' -f2)
 
 build-arch := $(shell uname -m \
 	| sed 's/^i.86$$/i386/' \
 	| sed 's/^x86pc$$/i386/' \
 	| sed 's/amd64/x86_64/' \
-	| sed 's/^arm.*$$/arm/' \
-	| sed 's/ppc/powerpc/')
-
-ifeq (Power,$(filter Power,$(build-arch)))
-	build-arch = powerpc
-endif
+	| sed 's/^arm.*$$/arm/')
 
 build-platform := \
 	$(shell uname -s | tr [:upper:] [:lower:] \
-		| sed 's/^mingw32.*$$/mingw32/' \
-		| sed 's/^cygwin.*$$/cygwin/')
+		| sed \
+		  -e 's/^mingw32.*$$/mingw32/' \
+			-e 's/^cygwin.*$$/cygwin/' \
+			-e 's/^darwin.*$$/macosx/')
 
 arch = $(build-arch)
 target-arch = $(arch)
+
 bootimage-platform = \
 	$(subst cygwin,windows,$(subst mingw32,windows,$(build-platform)))
+
 platform = $(bootimage-platform)
 
 codegen-targets = native
@@ -55,6 +54,42 @@ ifeq ($(codegen-targets),all)
 	options := $(options)-all
 endif
 
+ifeq ($(filter debug debug-fast fast stress stress-major small,$(mode)),)
+	x := $(error "'$(mode)' is not a valid mode (choose one of: debug debug-fast fast stress stress-major small)")
+endif
+
+ifeq ($(filter compile interpret,$(process)),)
+	x := $(error "'$(process)' is not a valid process (choose one of: compile interpret)")
+endif
+
+ifeq ($(filter x86_64 i386 arm,$(arch)),)
+	x := $(error "'$(arch)' is not a supported architecture (choose one of: x86_64 i386 arm)")
+endif
+
+ifeq ($(platform),darwin)
+	x := $(error "please use 'platform=macosx' or 'platform=ios' instead of 'platform=$platform'")
+endif
+
+ifneq ($(ios),)
+	x := $(error "please use 'platform=ios' instead of 'ios=true'")
+endif
+
+ifeq ($(filter linux windows macosx ios freebsd,$(platform)),)
+	x := $(error "'$(platform)' is not a supported platform (choose one of: linux windows macosx ios freebsd)")
+endif
+
+ifeq ($(platform),macosx)
+	ifeq ($(arch),arm)
+		x := $(error "please use 'arch=arm' 'platform=ios' to build for ios-arm")
+	endif
+endif
+
+ifeq ($(platform),ios)
+	ifeq ($(filter arm i386,$(arch)),)
+		x := $(error "please specify 'arch=i386' or 'arch=arm' with 'platform=ios'")
+	endif
+endif
+
 aot-only = false
 root := $(shell (cd .. && pwd))
 build = build/$(platform)-$(arch)$(options)
@@ -78,6 +113,11 @@ embed-prefix = /avian-embedded
 
 native-path = echo
 
+platform-kernel = $(subst macosx,darwin,$(subst ios,darwin,$1))
+
+build-kernel = $(call platform-kernel,$(build-platform))
+kernel = $(call platform-kernel,$(platform))
+
 ifeq ($(build-platform),cygwin)
 	native-path = cygpath -m
 endif
@@ -98,7 +138,7 @@ endif
 
 library-path-variable = LD_LIBRARY_PATH
 
-ifeq ($(build-platform),darwin)
+ifeq ($(build-kernel),darwin)
 	library-path-variable = DYLD_LIBRARY_PATH
 endif
 
@@ -112,6 +152,10 @@ ifneq ($(openjdk),)
 		openjdk-arch = amd64
 	endif
 
+	ifneq ($(android),)
+		x := $(error "android and openjdk are incompatible")
+	endif
+
 	ifneq ($(openjdk-src),)
 		include openjdk-src.mk
 		options := $(options)-openjdk-src
@@ -120,16 +164,24 @@ ifneq ($(openjdk),)
 		openjdk-jar-dep = $(build)/openjdk-jar.dep
 		classpath-jar-dep = $(openjdk-jar-dep)
 		javahome = $(embed-prefix)/javahomeJar
-		javahome-files = lib/zi lib/currency.data lib/security/java.security \
+		javahome-files = lib/currency.data lib/security/java.security \
 			lib/security/java.policy lib/security/cacerts
 
+		ifneq (,$(wildcard $(openjdk)/jre/lib/zi))
+			javahome-files += lib/zi
+		endif
+
+		ifneq (,$(wildcard $(openjdk)/jre/lib/tzdb.dat))
+			javahome-files += lib/tzdb.dat
+		endif
+
 		local-policy = lib/security/local_policy.jar
-		ifeq ($(shell test -e "$(openjdk)/jre/$(local-policy)" && echo found),found)
+		ifneq (,$(wildcard $(openjdk)/jre/$(local-policy)))
 			javahome-files += $(local-policy)
 		endif
 
 		export-policy = lib/security/US_export_policy.jar
-		ifeq ($(shell test -e "$(openjdk)/jre/$(export-policy)" && echo found),found)
+		ifneq (,$(wildcard $(openjdk)/jre/$(export-policy)))
 			javahome-files += $(export-policy)
 		endif
 
@@ -141,9 +193,11 @@ ifneq ($(openjdk),)
 		stub-sources = $(src)/openjdk/stubs.cpp
 		stub-objects = $(call cpp-objects,$(stub-sources),$(src),$(build))
 	else
+		soname-flag = -Wl,-soname -Wl,$(so-prefix)jvm$(so-suffix)
+		version-script-flag = -Wl,--version-script=openjdk.ld
 		options := $(options)-openjdk
 		test-executable = $(shell pwd)/$(executable-dynamic)
-		ifeq ($(build-platform),darwin)
+		ifeq ($(build-kernel),darwin)
 			library-path = \
 				$(library-path-variable)=$(build):$(openjdk)/jre/lib
 		else
@@ -163,7 +217,7 @@ ifneq ($(android),)
 	classpath-jar-dep = $(build)/android.dep
 	luni-native = $(android)/libcore/luni/src/main/native
 	classpath-cflags = -DBOOT_JAVAHOME
-	android-cflags := -I$(luni-native) \
+	android-cflags = -I$(luni-native) \
 		-I$(android)/libnativehelper/include/nativehelper \
 		-I$(android)/system/core/include \
 		-I$(android)/external/zlib \
@@ -191,26 +245,28 @@ ifneq ($(android),)
 
 	crypto-native := $(android)/libcore/crypto/src/main/native
 
+	crypto-cpps := $(crypto-native)/org_conscrypt_NativeCrypto.cpp
+
 	ifeq ($(platform),windows)
-		crypto-cpps := $(crypto-native)/org_conscrypt_NativeCrypto.cpp
 		android-cflags += -D__STDC_CONSTANT_MACROS
 		blacklist = $(luni-native)/java_io_Console.cpp \
 			$(luni-native)/java_lang_ProcessManager.cpp \
-			$(luni-native)/libcore_net_RawSocket.cpp \
-			$(luni-native)/org_apache_harmony_xnet_provider_jsse_NativeCrypto.cpp \
+			$(luni-native)/java_math_NativeBN.cpp \
+			$(luni-native)/libcore_net_RawSocket.cpp
 
-		luni-cpps := $(filter-out $(blacklist),$(luni-cpps))
 		icu-libs := $(android)/external/icu4c/lib/sicuin.a \
 			$(android)/external/icu4c/lib/sicuuc.a \
 			$(android)/external/icu4c/lib/sicudt.a
-		platform-lflags := -lgdi32
+		platform-lflags := -lgdi32 -lshlwapi -lwsock32
 	else
-		crypto-cpps := $(crypto-native)/org_conscrypt_NativeCrypto.cpp
 		android-cflags += -fPIC -DHAVE_SYS_UIO_H
+		blacklist = $(luni-native)/java_math_NativeBN.cpp
+
 		icu-libs := $(android)/external/icu4c/lib/libicui18n.a \
 			$(android)/external/icu4c/lib/libicuuc.a \
 			$(android)/external/icu4c/lib/libicudata.a
 	endif
+	luni-cpps := $(filter-out $(blacklist),$(luni-cpps))
 
 	classpath-lflags := \
 		$(icu-libs) \
@@ -231,6 +287,8 @@ ifneq ($(android),)
 		$(call cpp-objects,$(libnativehelper-cpps),$(libnativehelper-native),$(build))
 	luni-java = $(android)/libcore/luni/src/main/java
 	luni-javas := $(shell find $(luni-java) -name '*.java')
+	luni-nonjavas := $(shell find $(luni-java) -not -type d -not -name '*.java')
+	luni-copied-nonjavas = $(call noop-files,$(luni-nonjavas),$(luni-java),)
 	libdvm-java = $(android)/libcore/libdvm/src/main/java
 	libdvm-javas := $(shell find $(libdvm-java) -name '*.java')
 	crypto-java = $(android)/libcore/crypto/src/main/java
@@ -272,7 +330,7 @@ else
 endif
 
 mflag =
-ifneq ($(platform),darwin)
+ifneq ($(kernel),darwin)
 	ifeq ($(arch),i386)
 		mflag = -m32
 	endif
@@ -320,7 +378,7 @@ warnings = -Wall -Wextra -Werror -Wunused-parameter -Winit-self \
 
 target-cflags = -DTARGET_BYTES_PER_WORD=$(pointer-size)
 
-common-cflags = $(warnings) -fno-rtti -fno-exceptions -I$(classpath-src) \
+common-cflags = $(warnings) -std=c++0x -fno-rtti -fno-exceptions -I$(classpath-src) \
 	"-I$(JAVA_HOME)/include" -I$(src) -I$(build) -Iinclude $(classpath-cflags) \
 	-D__STDC_LIMIT_MACROS -D_JNI_IMPLEMENTATION_ -DAVIAN_VERSION=\"$(version)\" \
 	-DAVIAN_INFO="\"$(info)\"" \
@@ -339,7 +397,7 @@ endif
 build-cflags = $(common-cflags) -fPIC -fvisibility=hidden \
 	"-I$(JAVA_HOME)/include/linux" -I$(src) -pthread
 
-converter-cflags = -D__STDC_CONSTANT_MACROS -Iinclude/ -Isrc/ \
+converter-cflags = -D__STDC_CONSTANT_MACROS -std=c++0x -Iinclude/ -Isrc/ \
 	-fno-rtti -fno-exceptions \
 	-DAVIAN_TARGET_ARCH=AVIAN_ARCH_UNKNOWN \
 	-DAVIAN_TARGET_FORMAT=AVIAN_FORMAT_UNKNOWN \
@@ -350,7 +408,7 @@ cflags = $(build-cflags)
 common-lflags = -lm -lz
 
 ifeq ($(use-clang),true)
-  ifeq ($(build-platform),darwin)
+  ifeq ($(build-kernel),darwin)
     common-lflags += -Wl,-export_dynamic
   else
     ifneq ($(platform),windows)
@@ -364,9 +422,6 @@ endif
 build-lflags = -lz -lpthread -ldl
 
 lflags = $(common-lflags) -lpthread -ldl
-
-soname-flag = -Wl,-soname -Wl,$(so-prefix)jvm$(so-suffix)
-version-script-flag = -Wl,--version-script=openjdk.ld
 
 build-system = posix
 
@@ -388,6 +443,7 @@ asm-format = S
 as = $(cc)
 ld = $(cc)
 build-ld = $(build-cc)
+build-ld-cpp = $(build-cxx)
 
 default-remote-test-host = localhost
 default-remote-test-port = 22
@@ -409,8 +465,6 @@ shared = -shared
 
 rpath = -Wl,-rpath=\$$ORIGIN -Wl,-z,origin
 
-no-error = -Wno-error
-
 openjdk-extra-cflags = -fvisibility=hidden
 
 bootimage-cflags = -DTARGET_BYTES_PER_WORD=$(pointer-size)
@@ -420,48 +474,25 @@ codeimage-symbols = _binary_codeimage_bin_start:_binary_codeimage_bin_end
 developer-dir := $(shell if test -d /Developer/Platforms/$(target).platform/Developer/SDKs; then echo /Developer; \
 	else echo /Applications/Xcode.app/Contents/Developer; fi)
 
-ifeq ($(build-arch),powerpc)
-	ifneq ($(arch),$(build-arch))
-		bootimage-cflags += -DTARGET_OPPOSITE_ENDIAN
-	endif
-endif
-
 ifeq ($(arch),i386)
 	pointer-size = 4
-endif
-
-ifeq ($(arch),powerpc)
-	asm = powerpc
-	pointer-size = 4
-
-	ifneq ($(arch),$(build-arch))
-		bootimage-cflags += -DTARGET_OPPOSITE_ENDIAN
-	endif
-
-	ifneq ($(platform),darwin)
-		ifneq ($(arch),$(build-arch))
-			cxx = powerpc-linux-gnu-g++
-			cc = powerpc-linux-gnu-gcc
-			ar = powerpc-linux-gnu-ar
-			ranlib = powerpc-linux-gnu-ranlib
-			strip = powerpc-linux-gnu-strip
-		endif
-	endif
 endif
 
 ifeq ($(arch),arm)
 	asm = arm
 	pointer-size = 4
 
-	ifeq ($(build-platform),darwin)
-		ios = true
-	else
+	ifneq ($(platform),ios)
 		no-psabi = -Wno-psabi
 		cflags += -marm $(no-psabi)
+
+		# By default, assume we can't use armv7-specific instructions on
+		# non-iOS platforms.  Ideally, we'd detect this at runtime.
+		armv6=true
 	endif
 
 	ifneq ($(arch),$(build-arch))
-		ifneq ($(platform),darwin)
+		ifneq ($(kernel),darwin)
 			cxx = arm-linux-gnueabi-g++
 			cc = arm-linux-gnueabi-gcc
 			ar = arm-linux-gnueabi-ar
@@ -475,19 +506,15 @@ ifeq ($(armv6),true)
 	cflags += -DAVIAN_ASSUME_ARMV6
 endif
 
-ifeq ($(ios),true)
+ifeq ($(platform),ios)
 	cflags += -DAVIAN_IOS
 	use-lto = false
 endif
 
-ifeq ($(build-platform),darwin)
+ifeq ($(build-kernel),darwin)
 	build-cflags = $(common-cflags) -fPIC -fvisibility=hidden -I$(src)
 	cflags += -Wno-deprecated-declarations
 	build-lflags += -framework CoreFoundation
-endif
-
-ifeq ($(platform),darwin)
-	soname-flag =
 endif
 
 ifeq ($(platform),qnx)
@@ -585,15 +612,15 @@ ifeq ($(platform),android)
 	strip = $(toolchain)/bin/$(android-toolchain-prefix)strip
 endif
 
-ifeq ($(platform),darwin)
+ifeq ($(kernel),darwin)
 	target-format = macho
 	ifeq (${OSX_SDK_SYSROOT},)
-		OSX_SDK_SYSROOT = 10.4u
+		OSX_SDK_SYSROOT = 10.6u
 	endif
 	ifeq (${OSX_SDK_VERSION},)
-		OSX_SDK_VERSION = 10.4
+		OSX_SDK_VERSION = 10.6
 	endif
-	ifneq ($(build-platform),darwin)
+	ifneq ($(build-kernel),darwin)
 		cxx = i686-apple-darwin8-g++ $(mflag)
 		cc = i686-apple-darwin8-gcc $(mflag)
 		ar = i686-apple-darwin8-ar
@@ -604,7 +631,7 @@ ifeq ($(platform),darwin)
 			$(common-cflags) -fPIC -fvisibility=hidden -I$(src)
 	endif
 
-	ifneq ($(ios),true)
+	ifneq ($(platform),ios)
 		platform-dir = $(developer-dir)/Platforms/MacOSX.platform
 		sdk-dir = $(platform-dir)/Developer/SDKs
 
@@ -618,15 +645,15 @@ ifeq ($(platform),darwin)
 		sysroot = $(sdk-dir)/MacOSX$(mac-version).sdk
 	endif
 
-
+	soname-flag =
 	version-script-flag =
-	lflags = $(common-lflags) -ldl -framework CoreFoundation
+	lflags = $(common-lflags) -ldl -framework CoreFoundation -framework Foundation
 
 	ifeq (,$(shell ld -v 2>&1 | grep cctools))
 		lflags += -Wl,-compatibility_version,1.0.0
 	endif
 
-	ifneq ($(arch),arm)
+	ifneq ($(platform),ios)
 		lflags +=	-framework CoreServices -framework SystemConfiguration \
 			-framework Security
 	endif
@@ -639,17 +666,15 @@ ifeq ($(platform),darwin)
 	shared = -dynamiclib
 	rpath =
 
-	ifeq ($(ios),true)
+	ifeq ($(platform),ios)
 		ifeq ($(arch),i386)
 			target = iPhoneSimulator
 			sdk = iphonesimulator$(ios-version)
-			arch = i386
 			arch-flag = -arch i386
 			release = Release-iphonesimulator
 		else
 			target = iPhoneOS
 			sdk = iphoneos$(ios-version)
-			arch = arm
 			arch-flag = -arch armv7
 			release = Release-iphoneos
 		endif
@@ -658,7 +683,9 @@ ifeq ($(platform),darwin)
 		sdk-dir = $(platform-dir)/Developer/SDKs
 
 		ios-version := $(shell \
-			  if test -d $(sdk-dir)/$(target)7.0.sdk; then echo 7.0; \
+			  if test -d $(sdk-dir)/$(target)8.0.sdk; then echo 8.0; \
+			elif test -d $(sdk-dir)/$(target)7.1.sdk; then echo 7.1; \
+			elif test -d $(sdk-dir)/$(target)7.0.sdk; then echo 7.0; \
 			elif test -d $(sdk-dir)/$(target)6.1.sdk; then echo 6.1; \
 			elif test -d $(sdk-dir)/$(target)6.0.sdk; then echo 6.0; \
 			elif test -d $(sdk-dir)/$(target)5.1.sdk; then echo 5.1; \
@@ -686,9 +713,6 @@ ifeq ($(platform),darwin)
 			cxx = $(ios-bin)/g++
 			cc = $(ios-bin)/gcc
 		endif
-		ar = $(ios-bin)/ar
-		ranlib = $(ios-bin)/ranlib
-		strip = $(ios-bin)/strip
 
 		flags = -isysroot $(sdk-dir)/$(target)$(ios-version).sdk \
 			$(arch-flag)
@@ -699,19 +723,20 @@ ifeq ($(platform),darwin)
 		lflags += $(flags)
 	endif
 
-	ifeq ($(arch),powerpc)
-		classpath-extra-cflags += -arch ppc -mmacosx-version-min=${OSX_SDK_VERSION}
-		cflags += -arch ppc -mmacosx-version-min=${OSX_SDK_VERSION}
-		asmflags += -arch ppc -mmacosx-version-min=${OSX_SDK_VERSION}
-		lflags += -arch ppc -mmacosx-version-min=${OSX_SDK_VERSION}
-	endif
-
 	ifeq ($(arch),i386)
-		classpath-extra-cflags += \
-			-arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
-		cflags += -arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
-		asmflags += -arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
-		lflags += -arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
+		ifeq ($(platform),ios)
+			classpath-extra-cflags += \
+				-arch i386 -miphoneos-version-min=$(ios-version)
+			cflags += -arch i386 -miphoneos-version-min=$(ios-version)
+			asmflags += -arch i386 -miphoneos-version-min=$(ios-version)
+			lflags += -arch i386 -miphoneos-version-min=$(ios-version)
+		else
+			classpath-extra-cflags += \
+				-arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
+			cflags += -arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
+			asmflags += -arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
+			lflags += -arch i386 -mmacosx-version-min=${OSX_SDK_VERSION}
+		endif
 	endif
 
 	ifeq ($(arch),x86_64)
@@ -725,6 +750,8 @@ ifeq ($(platform),darwin)
 endif
 
 openjdk-extra-cflags += $(classpath-extra-cflags)
+
+find-tool = $(shell if ( command -v "$(1)$(2)" >/dev/null ); then (echo "$(1)$(2)") else (echo "$(2)"); fi)
 
 ifeq ($(platform),windows)
 	target-format = pe
@@ -755,6 +782,7 @@ ifeq ($(platform),windows)
 		strip = $(prefix)strip --strip-all
 	else
 		build-system = windows
+		static-on-windows = -static
 		common-cflags += "-I$(JAVA_HOME)/include/win32"
 		build-cflags = $(common-cflags) -I$(src) -I$(inc) -mthreads
 		openjdk-extra-cflags =
@@ -776,10 +804,10 @@ ifeq ($(platform),windows)
 		endif
 		cxx = x86_64-w64-mingw32-g++ $(mflag)
 		cc = x86_64-w64-mingw32-gcc $(mflag)
-		dlltool = dlltool
-		ar = ar
-		ranlib = ranlib
-		strip = strip
+		dlltool = $(call find-tool,x86_64-w64-mingw32-,dlltool)
+		ar = $(call find-tool,x86_64-w64-mingw32-,ar)
+		ranlib = $(call find-tool,x86_64-w64-mingw32-,ranlib)
+		strip = $(call find-tool,x86_64-w64-mingw32-,strip)
 		inc = "$(win64)/include"
 		lib = "$(win64)/lib"
 	else
@@ -908,7 +936,7 @@ ifeq ($(platform),wp8)
 	ifeq ($(mode),debug-fast)
 		build-type = Debug
 	endif
-	ifeq ($(mode),stress_major)
+	ifeq ($(mode),stress-major)
 		build-type = Release
 	endif
 	ifeq ($(mode),fast)
@@ -963,7 +991,7 @@ ifeq ($(platform),wp8)
 		cflags += -DNDEBUG
 		lflags +=
 	endif
-	ifeq ($(mode),stress_major)
+	ifeq ($(mode),stress-major)
 		cflags +=
 		lflags +=
 	endif
@@ -987,7 +1015,6 @@ ifeq ($(platform),wp8)
 endif
 
 ifdef msvc
-	no-error =
 	target-format = pe
 	windows-path = $(native-path)
 	windows-java-home := $(shell $(windows-path) "$(JAVA_HOME)")
@@ -1051,15 +1078,9 @@ ifeq ($(mode),stress-major)
 endif
 ifeq ($(mode),fast)
 	optimization-cflags = $(cflags_fast) -DNDEBUG
-	ifeq ($(use-lto),)
-		use-lto = true
-	endif
 endif
 ifeq ($(mode),small)
 	optimization-cflags = $(cflags_small) -DNDEBUG
-	ifeq ($(use-lto),)
-		use-lto = true
-	endif
 endif
 
 ifeq ($(use-lto),true)
@@ -1082,7 +1103,7 @@ endif
 cflags += $(optimization-cflags)
 
 ifndef ms_cl_compiler
-ifneq ($(platform),darwin)
+ifneq ($(kernel),darwin)
 ifeq ($(arch),i386)
 # this is necessary to support __sync_bool_compare_and_swap:
 	cflags += -march=i586
@@ -1095,6 +1116,7 @@ c-objects = $(foreach x,$(1),$(patsubst $(2)/%.c,$(3)/%.o,$(x)))
 cpp-objects = $(foreach x,$(1),$(patsubst $(2)/%.cpp,$(3)/%.o,$(x)))
 asm-objects = $(foreach x,$(1),$(patsubst $(2)/%.$(asm-format),$(3)/%-asm.o,$(x)))
 java-classes = $(foreach x,$(1),$(patsubst $(2)/%.java,$(3)/%.class,$(x)))
+noop-files = $(foreach x,$(1),$(patsubst $(2)/%,$(3)/%,$(x)))
 
 generated-code = \
 	$(build)/type-enums.cpp \
@@ -1110,7 +1132,7 @@ vm-depends := $(generated-code) \
 
 vm-sources = \
 	$(src)/system/$(system).cpp \
-	$(src)/system/$(system)/signal.cpp \
+	$(wildcard $(src)/system/$(system)/*.cpp) \
 	$(src)/finder.cpp \
 	$(src)/machine.cpp \
 	$(src)/util.cpp \
@@ -1137,6 +1159,7 @@ embed-objects = $(call cpp-objects,$(embed-sources),$(src),$(build-embed))
 compiler-sources = \
 	$(src)/codegen/compiler.cpp \
 	$(wildcard $(src)/codegen/compiler/*.cpp) \
+	$(src)/debug-util.cpp \
 	$(src)/codegen/registers.cpp \
 	$(src)/codegen/runtime.cpp \
 	$(src)/codegen/targets.cpp \
@@ -1146,12 +1169,9 @@ x86-assembler-sources = $(wildcard $(src)/codegen/target/x86/*.cpp)
 
 arm-assembler-sources = $(wildcard $(src)/codegen/target/arm/*.cpp)
 
-powerpc-assembler-sources = $(wildcard $(src)/codegen/target/powerpc/*.cpp)
-
 all-assembler-sources = \
 	$(x86-assembler-sources) \
-	$(arm-assembler-sources) \
-	$(powerpc-assembler-sources)
+	$(arm-assembler-sources)
 
 native-assembler-sources = $($(target-asm)-assembler-sources)
 
@@ -1166,7 +1186,13 @@ ifeq ($(process),compile)
 		vm-sources += $(native-assembler-sources)
 	endif
 	ifeq ($(codegen-targets),all)
-		vm-sources += $(all-assembler-sources)
+		ifeq ($(arch),arm)
+			# The x86 jit has a dependency on the x86 assembly code,
+			# and thus can't be successfully built on non-x86 platforms.
+			vm-sources += $(native-assembler-sources)
+		else
+			vm-sources += $(all-assembler-sources)
+		endif
 	endif
 
 	vm-asm-sources += $(src)/compile-$(asm).$(asm-format)
@@ -1241,11 +1267,12 @@ generator-depends := $(wildcard $(src)/*.h)
 generator-sources = \
 	$(src)/tools/type-generator/main.cpp \
 	$(src)/system/$(build-system).cpp \
-	$(src)/system/$(build-system)/signal.cpp \
-	$(src)/finder.cpp
+	$(wildcard $(src)/system/$(build-system)/*.cpp) \
+	$(src)/finder.cpp \
+	$(src)/util/arg-parser.cpp
 
 ifneq ($(lzma),)
-	common-cflags += -I$(lzma) -DAVIAN_USE_LZMA -D_7ZIP_ST
+	common-cflags += -I$(lzma) -DAVIAN_USE_LZMA
 
 	vm-sources += \
 		$(src)/lzma-decode.cpp
@@ -1268,8 +1295,10 @@ ifneq ($(lzma),)
 
 	lzma-encoder = $(build)/lzma/lzma
 
-	lzma-encoder-cflags = -D__STDC_CONSTANT_MACROS -fno-rtti -fno-exceptions \
-		-I$(lzma)/C
+	lzma-build-cflags = -D_7ZIP_ST -D__STDC_CONSTANT_MACROS \
+		-fno-exceptions -fPIC -I$(lzma)/C
+
+	lzma-cflags = $(lzma-build-cflags) $(classpath-extra-cflags)
 
 	lzma-encoder-sources = \
 		$(src)/lzma/main.cpp
@@ -1332,15 +1361,17 @@ ifneq ($(classpath),avian)
 		$(classpath-src)/avian/Callback.java \
 		$(classpath-src)/avian/Cell.java \
 		$(classpath-src)/avian/ClassAddendum.java \
-		$(classpath-src)/avian/InnerClassReference.java \
 		$(classpath-src)/avian/Classes.java \
+		$(classpath-src)/avian/Code.java \
 		$(classpath-src)/avian/ConstantPool.java \
 		$(classpath-src)/avian/Continuations.java \
 		$(classpath-src)/avian/FieldAddendum.java \
 		$(classpath-src)/avian/Function.java \
 		$(classpath-src)/avian/IncompatibleContinuationException.java \
+		$(classpath-src)/avian/InnerClassReference.java \
 		$(classpath-src)/avian/Machine.java \
 		$(classpath-src)/avian/MethodAddendum.java \
+		$(classpath-src)/avian/Pair.java \
 		$(classpath-src)/avian/Singleton.java \
 		$(classpath-src)/avian/Stream.java \
 		$(classpath-src)/avian/SystemClassLoader.java \
@@ -1348,7 +1379,8 @@ ifneq ($(classpath),avian)
 		$(classpath-src)/avian/VMClass.java \
 		$(classpath-src)/avian/VMField.java \
 		$(classpath-src)/avian/VMMethod.java \
-		$(classpath-src)/avian/avianvmresource/Handler.java
+		$(classpath-src)/avian/avianvmresource/Handler.java \
+		$(classpath-src)/avian/file/Handler.java
 
 	ifeq ($(openjdk),)
 		classpath-sources := $(classpath-sources) \
@@ -1417,10 +1449,6 @@ ifeq ($(target-arch),x86_64)
 	cflags += -DAVIAN_TARGET_ARCH=AVIAN_ARCH_X86_64
 endif
 
-ifeq ($(target-arch),powerpc)
-	cflags += -DAVIAN_TARGET_ARCH=AVIAN_ARCH_POWERPC
-endif
-
 ifeq ($(target-arch),arm)
 	cflags += -DAVIAN_TARGET_ARCH=AVIAN_ARCH_ARM
 endif
@@ -1440,7 +1468,8 @@ endif
 class-name = $(patsubst $(1)/%.class,%,$(2))
 class-names = $(foreach x,$(2),$(call class-name,$(1),$(x)))
 
-test-flags = -Djava.library.path=$(build) -cp $(build)/test
+test-flags = -Djava.library.path=$(build) \
+	-cp '$(build)/test$(target-path-separator)$(build)/extra-dir'
 
 test-args = $(test-flags) $(input)
 
@@ -1448,11 +1477,11 @@ test-args = $(test-flags) $(input)
 ifneq ($(supports_avian_executable),false)
 build: $(static-library) $(executable) $(dynamic-library) $(lzma-loader) \
 	$(lzma-encoder) $(executable-dynamic) $(classpath-dep) $(test-dep) \
-	$(test-extra-dep) $(embed)
+	$(test-extra-dep) $(embed) $(build)/classpath.jar
 else
 build: $(static-library) $(dynamic-library) $(lzma-loader) \
 	$(lzma-encoder) $(classpath-dep) $(test-dep) \
-	$(test-extra-dep) $(embed)
+	$(test-extra-dep) $(embed) $(build)/classpath.jar
 endif
 
 $(test-dep): $(classpath-dep)
@@ -1465,14 +1494,21 @@ run: build
 
 .PHONY: debug
 debug: build
-	$(library-path) gdb --args $(test-executable) $(test-args)
+	$(library-path) $(db) $(test-executable) $(test-args)
 
 .PHONY: vg
 vg: build
 	$(library-path) $(vg) $(test-executable) $(test-args)
 
+
 .PHONY: test
-test: build $(build)/run-tests.sh $(build)/test.sh $(unittest-executable)
+test: build-test run-test
+
+.PHONY: build-test
+build-test: build $(build)/run-tests.sh $(build)/test.sh $(unittest-executable)
+
+.PHONY: run-test
+run-test:
 ifneq ($(remote-test),true)
 	/bin/sh $(build)/run-tests.sh
 else
@@ -1494,7 +1530,8 @@ tarball:
 
 .PHONY: javadoc
 javadoc:
-	$(JAVA_HOME)/bin/javadoc -sourcepath classpath -d build/javadoc -subpackages avian:java \
+	$(JAVA_HOME)/bin/javadoc -sourcepath classpath -d build/javadoc \
+		-subpackages avian:java \
 		-windowtitle "Avian v$(version) Class Library API" \
 		-doctitle "Avian v$(version) Class Library API" \
 		-header "Avian v$(version)" \
@@ -1542,7 +1579,7 @@ gen-arg = $(shell echo $(1) | sed -e 's:$(build)/type-\(.*\)\.cpp:\1:')
 $(generated-code): %.cpp: $(src)/types.def $(generator) $(classpath-dep)
 	@echo "generating $(@)"
 	@mkdir -p $(dir $(@))
-	$(generator) $(boot-classpath) $(<) $(@) $(call gen-arg,$(@))
+	$(generator) -cp $(boot-classpath) -i $(<) -o $(@) -t $(call gen-arg,$(@))
 
 $(classpath-build)/%.class: $(classpath-src)/%.java
 	@echo $(<)
@@ -1573,7 +1610,7 @@ $(build)/%.o: $(build)/android-src/%.cpp $(build)/android.dep
 		$$($(windows-path) $(<)) $(call output,$(@))
 
 $(build)/android.dep: $(luni-javas) $(libdvm-javas) $(crypto-javas) \
-		$(dalvik-javas) $(xml-javas)
+		$(dalvik-javas) $(xml-javas) $(luni-nonjavas)
 	@echo "compiling luni classes"
 	@mkdir -p $(classpath-build)
 	@mkdir -p $(build)/android
@@ -1583,15 +1620,18 @@ $(build)/android.dep: $(luni-javas) $(libdvm-javas) $(crypto-javas) \
 	cp $(android)/external/expat/lib/expat*.h $(build)/android-src/libexpat/
 	cp -a $(luni-java)/* $(libdvm-java)/* $(crypto-java)/* $(dalvik-java)/* \
 		$(xml-java)/* $(build)/android-src/
-	sed -i -e 's/return ordinal - o.ordinal;/return ordinal - o.ordinal();/' \
-		$(build)/android-src/java/lang/Enum.java
-	# sed makes this file read-only which in turn breaks re-builds; so marking it as writable
-	chmod +w $(build)/android-src/java/lang/Enum.java
 	find $(build)/android-src -name '*.java' > $(build)/android.txt
 	$(javac) -Xmaxerrs 1000 -d $(build)/android -sourcepath $(luni-java) \
 		@$(build)/android.txt
 	rm $(build)/android/sun/misc/Unsafe* \
 		$(build)/android/java/lang/reflect/Proxy*
+	for x in $(luni-copied-nonjavas); \
+		do cp $(luni-java)$${x} $(build)/android$${x} ; \
+	done
+	# fix security.properties - get rid of "com.android" in front of classes starting with "org"
+	sed -i -e 's/\(.*=\)com\.android\.\(org\..*\)/\1\2/g' \
+		$(build)/android/java/security/security.properties
+	chmod +w $(build)/android/java/security/security.properties
 	cp -r $(build)/android/* $(classpath-build)
 	@touch $(@)	
 
@@ -1713,7 +1753,7 @@ endif
 $(build)/%.o: $(lzma)/C/%.c
 	@echo "compiling $(@)"
 	@mkdir -p $(dir $(@))
-	$(cc) $(cflags) $(no-error) -c $$($(windows-path) $(<)) $(call output,$(@))
+	$(cc) $(lzma-cflags) -c $$($(windows-path) $(<)) $(call output,$(@))
 
 $(vm-asm-objects): $(build)/%-asm.o: $(src)/%.$(asm-format)
 	$(compile-asm-object)
@@ -1749,7 +1789,7 @@ $(converter): $(converter-objects) $(converter-tool-objects)
 
 $(lzma-encoder-objects): $(build)/lzma/%.o: $(src)/lzma/%.cpp
 	@mkdir -p $(dir $(@))
-	$(build-cxx) $(lzma-encoder-cflags) -c $(<) -o $(@)
+	$(build-cxx) $(lzma-build-cflags) -c $(<) -o $(@)
 
 $(lzma-encoder): $(lzma-encoder-objects) $(lzma-encoder-lzma-objects)
 	$(build-cc) $(^) -g -o $(@)
@@ -1793,10 +1833,10 @@ $(generator-objects): $(build)/%-build.o: $(src)/%.cpp
 $(build)/%-build.o: $(lzma)/C/%.c
 	@echo "compiling $(@)"
 	@mkdir -p $(dir $(@))
-	$(build-cxx) -DPOINTER_SIZE=$(pointer-size) -O0 -g3 $(build-cflags) \
-		$(no-error) -c $(<) -o $(@)
+	$(build-cc) -DPOINTER_SIZE=$(pointer-size) -O0 -g3 $(lzma-build-cflags) \
+		-c $(<) -o $(@)
 
-$(jni-objects): $(build)/%.o: $(classpath-src)/%.cpp
+$(jni-objects): $(build)/%.o: $(classpath-src)/%.cpp $(vm-depends)
 	$(compile-object)
 
 $(static-library): $(vm-objects) $(classpath-objects) $(vm-heapwalk-objects) \
@@ -1827,7 +1867,8 @@ executable-objects = $(vm-objects) $(classpath-objects) $(driver-object) \
 	$(javahome-object) $(boot-javahome-object) $(lzma-decode-objects)
 
 unittest-executable-objects = $(unittest-objects) $(vm-objects) \
-	$(build)/util/arg-parser.o $(stub-objects) $(lzma-decode-objects)
+	$(vm-heapwalk-objects) $(build)/util/arg-parser.o $(stub-objects) \
+	$(lzma-decode-objects)
 
 ifeq ($(process),interpret)
 	unittest-executable-objects += $(all-codegen-target-objects)
@@ -1875,7 +1916,6 @@ $(unittest-executable): $(unittest-executable-objects)
 $(bootimage-generator): $(bootimage-generator-objects) $(vm-objects)
 	echo building $(bootimage-generator) arch=$(build-arch) platform=$(bootimage-platform)
 	$(MAKE) mode=$(mode) \
-		ios=false \
 		build=$(host-build-root) \
 		arch=$(build-arch) \
 		aot-only=false \
@@ -1883,6 +1923,7 @@ $(bootimage-generator): $(bootimage-generator-objects) $(vm-objects)
 		armv6=$(armv6) \
 		platform=$(bootimage-platform) \
 		target-format=$(target-format) \
+		android=$(android) \
 		openjdk=$(openjdk) \
 		openjdk-src=$(openjdk-src) \
 		bootimage-generator= \
@@ -1949,14 +1990,14 @@ endif
 
 $(generator): $(generator-objects) $(generator-lzma-objects)
 	@echo "linking $(@)"
-	$(build-ld) $(^) $(build-lflags) -o $(@)
+	$(build-ld-cpp) $(^) $(build-lflags) $(static-on-windows) -o $(@)
 
 $(openjdk-objects): $(build)/openjdk/%-openjdk.o: $(openjdk-src)/%.c \
 		$(openjdk-headers-dep)
 	@echo "compiling $(@)"
 	@mkdir -p $(dir $(@))
 	sed 's/^static jclass ia_class;//' < $(<) > $(build)/openjdk/$(notdir $(<))
-ifeq ($(ios),true)
+ifeq ($(platform),ios)
 	sed \
 		-e 's/^#ifndef __APPLE__/#if 1/' \
 		-e 's/^#ifdef __APPLE__/#if 0/' \
@@ -1967,6 +2008,13 @@ ifeq ($(ios),true)
 		-e 's/^#ifdef __APPLE__/#if 0/' \
 		< "$(openjdk-src)/solaris/native/java/lang/UNIXProcess_md.c" \
 		> $(build)/openjdk/UNIXProcess_md.c
+	if [ -e "$(openjdk-src)/solaris/native/java/lang/childproc.h" ]; then \
+		sed \
+			-e 's/^#ifndef __APPLE__/#if 1/' \
+			-e 's/^#ifdef __APPLE__/#if 0/' \
+			< "$(openjdk-src)/solaris/native/java/lang/childproc.h" \
+			> $(build)/openjdk/childproc.h; \
+	fi
 endif
 	if [ -f openjdk-patches/$(notdir $(<)).patch ]; then \
 		( cd $(build) && patch -p0 ) < openjdk-patches/$(notdir $(<)).patch; \
@@ -2003,7 +2051,7 @@ ifeq ($(platform),windows)
 	echo 'static int getAddrsFromAdapter(IP_ADAPTER_ADDRESSES *ptr, netaddr **netaddrPP);' >> $(build)/openjdk/NetworkInterface.h
 endif
 
-ifeq ($(platform),darwin)
+ifeq ($(kernel),darwin)
 	mkdir -p $(build)/openjdk/netinet
 	for file in \
 		$(sysroot)/usr/include/netinet/ip.h \

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -15,24 +15,24 @@
 
 namespace avian {
 namespace util {
-class Allocator;
+class AllocOnly;
 }
 }
 
 namespace vm {
 
 uint8_t* decodeLZMA(System* s,
-                    avian::util::Allocator* a,
+                    avian::util::Alloc* a,
                     uint8_t* in,
                     unsigned inSize,
                     unsigned* outSize);
 
 uint8_t* encodeLZMA(System* s,
-                    avian::util::Allocator* a,
+                    avian::util::Alloc* a,
                     uint8_t* in,
                     unsigned inSize,
                     unsigned* outSize);
 
-} // namespace vm
+}  // namespace vm
 
-#endif // LZMA_H
+#endif  // LZMA_H

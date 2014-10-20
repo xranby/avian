@@ -1,0 +1,2 @@
+/usr/bin/ar cr libavian_util.a  CMakeFiles/avian_util.dir/arg-parser.cpp.o CMakeFiles/avian_util.dir/fixed-allocator.cpp.o
+/usr/bin/ranlib libavian_util.a

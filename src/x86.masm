@@ -1,5 +1,5 @@
 comment #
-   Copyright (c) 2008-2013, Avian Contributors
+   Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -29,40 +29,6 @@ CHECKPOINT_STACK equ 24
 CHECKPOINT_BASE equ 28
 
 _TEXT SEGMENT
-
-public C detectFeature
-detectFeature:
-	push ebp
-	mov ebp,esp
-	push edx
-	push ecx
-	push ebx
-	push esi
-	push edi
-	mov esi,ds:dword ptr[12+ebp]
-	mov edi,ds:dword ptr[8+ebp]
-	mov eax,1
-	cpuid
-	and edx,esi
-	and ecx,edi
-	or ecx,edx
-	test ecx,ecx
-	je LNOSSE
-	mov eax,1
-	jmp LSSEEND
-
-LNOSSE:
-	mov eax,0
-
-LSSEEND:
-	pop edi
-	pop esi
-	pop ebx
-	pop ecx
-	pop edx
-	mov esp,ebp
-	pop ebp
-	ret
 
 public C vmNativeCall
 vmNativeCall:

@@ -1,0 +1,1 @@
+/usr/bin/c++    -Wall -Werror -fno-exceptions -std=c++0x -g    CMakeFiles/type_generator.dir/main.cpp.o  -o type_generator -rdynamic ../../libavian_jvm_finder.a ../../system/libavian_system.a ../../util/libavian_util.a -lz -lpthread -ldl 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -20,7 +20,7 @@ namespace arm {
 
 class PoolEvent;
 
-class MyBlock: public Assembler::Block {
+class MyBlock : public Assembler::Block {
  public:
   MyBlock(Context* context, unsigned offset);
 
@@ -39,8 +39,8 @@ class MyBlock: public Assembler::Block {
   unsigned size;
 };
 
-} // namespace arm
-} // namespace codegen
-} // namespace avian
+}  // namespace arm
+}  // namespace codegen
+}  // namespace avian
 
-#endif // AVIAN_CODEGEN_ASSEMBLER_ARM_BLOCK_H
+#endif  // AVIAN_CODEGEN_ASSEMBLER_ARM_BLOCK_H

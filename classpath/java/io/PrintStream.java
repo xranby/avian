@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Avian Contributors
+/* Copyright (c) 2008-2014, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -22,6 +22,17 @@ public class PrintStream extends OutputStream {
   public PrintStream(OutputStream out, boolean autoFlush) {
     this.out = out;
     this.autoFlush = autoFlush;
+  }
+
+  public PrintStream(OutputStream out, boolean autoFlush, String encoding)
+    throws UnsupportedEncodingException
+  {
+    this.out = out;
+    this.autoFlush = autoFlush;
+
+    if (! (encoding.equals("UTF-8") || encoding.equals("ISO-8859-1"))) {
+      throw new UnsupportedEncodingException(encoding);
+    }
   }
 
   public PrintStream(OutputStream out) {
