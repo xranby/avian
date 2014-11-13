@@ -1,2 +1,0 @@
-/usr/bin/ar cr libobject_writer.a  CMakeFiles/object_writer.dir/elf.cpp.o CMakeFiles/object_writer.dir/mach-o.cpp.o CMakeFiles/object_writer.dir/pe.cpp.o CMakeFiles/object_writer.dir/tools.cpp.o
-/usr/bin/ranlib libobject_writer.a

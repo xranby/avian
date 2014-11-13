@@ -1,1 +1,0 @@
-/usr/bin/c++    -Wall -Werror -fno-exceptions -std=c++0x -g    CMakeFiles/binary_to_object.dir/main.cpp.o  -o binary_to_object -rdynamic ../object-writer/libobject_writer.a 
