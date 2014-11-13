@@ -1,0 +1,13 @@
+Index: b/makefile
+===================================================================
+--- a/makefile
++++ b/makefile
+@@ -1101,7 +1101,7 @@ ifeq ($(use-lto),true)
+ 		gcc-minor := $(shell $(cc) -dumpversion | cut -f2 -d.)
+ 		ifeq ($(shell expr 4 \< $(gcc-major) \
+ 				\| \( 4 \<= $(gcc-major) \& 6 \<= $(gcc-minor) \)),1)
+-			optimization-cflags += -flto
++			optimization-cflags += -flto -fuse-linker-plugin -ffat-lto-objects
+ 			no-lto = -fno-lto
+ 			lflags += $(optimization-cflags)
+ 		endif

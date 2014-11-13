@@ -3,8 +3,8 @@ Section: java
 Priority: extra
 Maintainer: OpenJDK Team <openjdk@lists.launchpad.net>
 Uploaders: Matthias Klose <doko@ubuntu.com>, Xerxes Rånby <xerxes@zafena.se>
-Build-Depends: debhelper (>= 8.0.0), openjdk-7-jdk, zlib1g-dev, g++-4.7
-Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 8.0.0), openjdk-7-jdk, zlib1g-dev
+Standards-Version: 3.9.6
 Homepage: http://oss.readytalk.com/avian/
 
 Package: jvm-7-avian-jre

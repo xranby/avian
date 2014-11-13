@@ -6,6 +6,8 @@
 
 d = debian/jvm-7-avian-jre
 
+export DEB_CFLAGS_MAINT_STRIP = -O2
+export DEB_CFLAGS_MAINT_APPEND = -O3
 DPKG_CFLAGS  := $(shell dpkg-buildflags --get CPPFLAGS; dpkg-buildflags --get CFLAGS)
 DPKG_LFLAGS := $(shell dpkg-buildflags --get LDFLAGS)
 
@@ -41,9 +43,10 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 	make MAKEFLAGS= \
+		DEB_HOST_ARCH=$(DEB_HOST_ARCH) \
 		JAVA_HOME=$(JAVA_HOME) \
 		openjdk=$(JAVA_HOME) \
-		build-cc=gcc-4.7 build-cxx=g++-4.7 \
+		build-cc=gcc build-cxx=g++ \
 		DPKG_CFLAGS="$(DPKG_CFLAGS)" \
 		DPKG_LFLAGS="$(DPKG_LFLAGS)" \
 		use-lto=$(use_lto) \
@@ -51,8 +54,14 @@ override_dh_auto_build:
 
 override_dh_auto_test:
 	-make MAKEFLAGS= test \
+		DEB_HOST_ARCH=$(DEB_HOST_ARCH) \
 		JAVA_HOME=$(JAVA_HOME) \
-		openjdk=$(JAVA_HOME)
+		openjdk=$(JAVA_HOME) \
+		build-cc=gcc build-cxx=g++ \
+		DPKG_CFLAGS="$(DPKG_CFLAGS)" \
+		DPKG_LFLAGS="$(DPKG_LFLAGS)" \
+		use-lto=$(use_lto) \
+		info='$(info)'
 
 override_dh_auto_install:
 	mkdir -p $(d)/$(JAVA_HOME)/jre/lib/$(archdir)/avian

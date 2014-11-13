@@ -1,8 +1,17 @@
 avian (1.1.0-1) unstable; urgency=low
 
+  [ Xerxes Rånby ]
   * Update to 1.1.0.
-  * Add compatibility with recent OpenJDK releases, closes: bug#759834
-  * non-reproducible gold linker internal error on amd64, closes: bug#753182
+  * Add compatibility with recent OpenJDK releases, closes: #759834
+  * non-reproducible gold linker internal error on amd64, closes: #753182
+
+  [ Matthias Klose ]
+  * Build using the default GCC.
+  * Remove debian template files.
+  * Build with -g instead of -g3 to avoid an LTO ICE.
+  * Still build with -marm on armhf, apparently the package is not ready
+    for thumb mode.
+  * Still build without LTO on ARM32.
 
  -- Xerxes Rånby <xerxes@zafena.se>  Mon, 20 Oct 2014 16:21:56 +0200
 
@@ -11,7 +20,7 @@ avian (0.7+20140401-1) unstable; urgency=low
   * Update to 20140401.
 
  -- Xerxes Rånby <xerxes@zafena.se>  Fri, 04 Apr 2013 15:44:39 +0200
- 
+
 avian (0.6+20130401-0ubuntu1) raring; urgency=low
 
   * Update to 20130401.

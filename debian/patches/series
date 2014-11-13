@@ -1,1 +1,2 @@
 dpkg-buildflags.diff
+lto-flags.diff

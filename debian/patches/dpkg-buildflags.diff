@@ -1,8 +1,18 @@
-Index: avian/makefile
+Index: b/makefile
 ===================================================================
---- avian.orig/makefile	2014-10-20 16:32:54.523914107 +0200
-+++ avian/makefile	2014-10-20 16:32:54.519914080 +0200
-@@ -423,6 +423,9 @@
+--- a/makefile
++++ b/makefile
+@@ -369,6 +369,9 @@ else
+ 	cflags_fast = -O3 -g3
+ 	cflags_small = -Os -g3
+ endif
++# pass the defaults from debin/rules
++cflags_fast =
++cflags_small =
+ 
+ # note that we suppress the non-virtual-dtor warning because we never
+ # use the delete operator, which means we don't need virtual
+@@ -423,6 +426,9 @@ build-lflags = -lz -lpthread -ldl
  
  lflags = $(common-lflags) -lpthread -ldl
  
@@ -12,3 +22,19 @@ Index: avian/makefile
  build-system = posix
  
  system = posix
+@@ -484,11 +490,13 @@ ifeq ($(arch),arm)
+ 
+ 	ifneq ($(platform),ios)
+ 		no-psabi = -Wno-psabi
+-		cflags += -marm $(no-psabi)
++		cflags += $(no-psabi)
+ 
+ 		# By default, assume we can't use armv7-specific instructions on
+ 		# non-iOS platforms.  Ideally, we'd detect this at runtime.
+-		armv6=true
++		ifneq ($(DEB_HOST_ARCH),armhf)
++		  armv6=true
++		endif
+ 	endif
+ 
+ 	ifneq ($(arch),$(build-arch))
