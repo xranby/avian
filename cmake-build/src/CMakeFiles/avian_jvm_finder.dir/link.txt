@@ -1,2 +1,0 @@
-/usr/bin/ar cr libavian_jvm_finder.a  CMakeFiles/avian_jvm_finder.dir/finder.cpp.o
-/usr/bin/ranlib libavian_jvm_finder.a

@@ -1,2 +1,0 @@
-/usr/bin/ar cr libavian_codegen_arm.a  CMakeFiles/avian_codegen_arm.dir/assembler.cpp.o CMakeFiles/avian_codegen_arm.dir/block.cpp.o CMakeFiles/avian_codegen_arm.dir/context.cpp.o CMakeFiles/avian_codegen_arm.dir/fixup.cpp.o CMakeFiles/avian_codegen_arm.dir/multimethod.cpp.o CMakeFiles/avian_codegen_arm.dir/operations.cpp.o
-/usr/bin/ranlib libavian_codegen_arm.a

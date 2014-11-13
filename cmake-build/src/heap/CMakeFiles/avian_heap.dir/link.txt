@@ -1,2 +1,0 @@
-/usr/bin/ar cr libavian_heap.a  CMakeFiles/avian_heap.dir/heap.cpp.o
-/usr/bin/ranlib libavian_heap.a
