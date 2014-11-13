@@ -1,2 +1,3 @@
 dpkg-buildflags.diff
 lto-flags.diff
+openjdk-JVM_FindClassFromCaller.diff

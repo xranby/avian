@@ -1,3 +1,12 @@
+avian (1.1.0-2) unstable; urgency=low
+
+  [ Xerxes Rånby ]
+  * debian/patches/openjdk-JVM_FindClassFromCaller.diff
+    Add compatibility with IcedTea 2.5.3 update.
+  * debian/control Remove powerpc, ppc is not a supported architecture.
+
+ -- Xerxes Rånby <xerxes@zafena.se>  Thu, 13 Nov 2014 15:15:56 +0100
+
 avian (1.1.0-1) unstable; urgency=low
 
   [ Xerxes Rånby ]

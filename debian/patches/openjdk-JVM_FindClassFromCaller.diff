@@ -1,0 +1,76 @@
+commit 2e5990a6b0c35934b99a0a776762fab8f643599b
+Author: Xerxes Rånby <xerxes@gudinna.com>
+Date:   Sun Oct 26 21:46:09 2014 +0100
+
+    OpenJDK: Implement JVM_FindClassFromCaller
+    8015256: Better class accessibility
+    Summary: Improve protection domain check in forName()
+    
+    Signed-off-by: Xerxes Rånby <xerxes@gudinna.com>
+
+diff --git a/openjdk.ld b/openjdk.ld
+index ac76780..3c17a16 100644
+--- a/openjdk.ld
++++ b/openjdk.ld
+@@ -88,6 +88,7 @@ SUNWprivate_1.1 {
+                 JVM_EnableCompiler;
+                 JVM_Exit;
+                 JVM_FillInStackTrace;
++                JVM_FindClassFromCaller;
+                 JVM_FindClassFromClass;
+                 JVM_FindClassFromClassLoader;
+                 JVM_FindClassFromBootLoader;
+diff --git a/src/classpath-openjdk.cpp b/src/classpath-openjdk.cpp
+index 82f2417..6247eda 100644
+--- a/src/classpath-openjdk.cpp
++++ b/src/classpath-openjdk.cpp
+@@ -4237,6 +4237,49 @@ extern "C" AVIAN_EXPORT void JNICALL
+   run(t, jvmResolveClass, arguments);
+ }
+ 
++uint64_t jvmFindClassFromCaller(Thread* t, uintptr_t* arguments)
++{
++  const char* name = reinterpret_cast<const char*>(arguments[0]);
++  jboolean init = arguments[1];
++  jobject loader = reinterpret_cast<jobject>(arguments[2]);
++  // jclass caller = reinterpret_cast<jclass>(arguments[3]);
++
++  /* XXX The caller's protection domain should be used during
++     the resolveClass but there is no specification or
++     unit-test in OpenJDK documenting the desired effect */
++
++  GcClass* c = resolveClass(
++      t,
++      loader ? cast<GcClassLoader>(t, *loader) : roots(t)->bootLoader(),
++      name,
++      true,
++      static_cast<Gc::Type>(GcClassNotFoundException::Type));
++
++  if (init) {
++    PROTECT(t, c);
++
++    initClass(t, c);
++  }
++
++  return reinterpret_cast<uint64_t>(makeLocalReference(t, getJClass(t, c)));
++}
++
++extern "C" AVIAN_EXPORT jclass JNICALL
++    EXPORT(JVM_FindClassFromCaller)(Thread* t,
++                                    const char* name,
++                                    jboolean init,
++                                    jobject loader,
++                                    jclass caller)
++{
++  uintptr_t arguments[] = {reinterpret_cast<uintptr_t>(name),
++                           init,
++                           reinterpret_cast<uintptr_t>(loader),
++                           reinterpret_cast<uintptr_t>(caller)};
++
++  return reinterpret_cast<jclass>(
++      run(t, jvmFindClassFromCaller, arguments));
++}
++
+ uint64_t jvmFindClassFromClassLoader(Thread* t, uintptr_t* arguments)
+ {
+   const char* name = reinterpret_cast<const char*>(arguments[0]);

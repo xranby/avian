@@ -8,7 +8,7 @@ Standards-Version: 3.9.6
 Homepage: http://oss.readytalk.com/avian/
 
 Package: jvm-7-avian-jre
-Architecture: amd64 armel armhf i386 powerpc
+Architecture: amd64 armel armhf i386
 Depends: ${shlibs:Depends}, ${misc:Depends}, openjdk-7-jre-headless
 Description: lightweight virtual machine using the OpenJDK class library
  Avian is a lightweight virtual machine and class library designed
